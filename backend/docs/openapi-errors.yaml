@@ -1,0 +1,94 @@
+# Reusable OpenAPI 3.1 error examples for every /api/v1 route (issue #124).
+#
+# Scope note: this repo does not yet have a full OpenAPI document (that is
+# tracked separately in issue #15 — "Write an OpenAPI 3.1 spec for every
+# /api/v1 route"). This file is the error-example fragment issue #124 asks
+# for, written so it can be merged straight into `components` once #15
+# lands (`$ref: './openapi-errors.yaml#/components/examples/ValidationError'`
+# etc.), and so a mock server can serve it today via Prism (see
+# docs/rate-limits.md and the README section this links from for the
+# `Prefer: example=` flow).
+#
+# Every example matches the actual error envelope shape produced by
+# src/middleware/errorHandler.ts (`toErrorBody`): { code, error, details?,
+# retryable? }, not a hypothetical one — so the codes and shapes stay true
+# to the running API as new error paths are added.
+openapi: 3.1.0
+info:
+  title: GlobeWallet API — error response examples
+  version: "1.0"
+components:
+  schemas:
+    ErrorResponse:
+      type: object
+      required: [code, error]
+      properties:
+        code:
+          type: string
+          description: Stable, machine-readable error code. Never changes for a given failure mode even if `error` wording changes.
+        error:
+          type: string
+          description: Human-readable message. Never a raw stack trace or driver error string.
+        details:
+          description: Optional, shape depends on `code` (e.g. an array of field-level issues for VALIDATION_ERROR).
+        retryable:
+          type: boolean
+          description: Present only when the caller can usefully retry (e.g. Horizon/Soroban RPC transients).
+  examples:
+    BadRequest400:
+      summary: Request failed input validation
+      value:
+        code: VALIDATION_ERROR
+        error: Request validation failed
+        details:
+          - path: publicKey
+            location: params
+            message: must be a valid Stellar public key (G...)
+    Unauthorized401:
+      summary: Missing or invalid credentials
+      value:
+        code: UNAUTHORIZED
+        error: Unauthorized
+    Forbidden403:
+      summary: >-
+        Authenticated but not permitted to perform this action. No route
+        currently returns 403 (there is no role-based authorization yet —
+        every caller shares one API-key identity, see src/routes/auth.ts) —
+        this example is forward scaffolding for when that lands, kept here
+        so the error-shape contract is fixed before any route starts using
+        it.
+      value:
+        code: FORBIDDEN
+        error: You do not have permission to perform this action
+    NotFound404:
+      summary: Resource does not exist (route or domain object)
+      value:
+        code: ACCOUNT_NOT_FOUND
+        error: "Account GTEST was not found on Horizon"
+    Conflict409:
+      summary: Request conflicts with current server state (e.g. a stale Horizon sequence number — src/services/stellarErrors.ts)
+      value:
+        code: SEQUENCE_CONFLICT
+        error: sequence changed, safe to retry
+        retryable: true
+    PayloadTooLarge413:
+      summary: Request body exceeded the configured limit (currently 10kb, see src/app.ts)
+      value:
+        code: PAYLOAD_TOO_LARGE
+        error: Request body exceeds the configured size limit
+    TooManyRequests429:
+      summary: Rate limit exceeded — see docs/rate-limits.md for client backoff guidance
+      value:
+        code: LOGIN_RATE_LIMITED
+        error: Too many login attempts, please try again later
+    InternalServerError500:
+      summary: Unexpected server-side failure
+      value:
+        code: INTERNAL_ERROR
+        error: Internal server error
+    ServiceUnavailable503:
+      summary: Dependent feature not configured yet (e.g. contract routes before GLOBE_WALLET_CONTRACT_ID is set — src/services/sorobanErrors.ts)
+      value:
+        code: SOROBAN_NOT_CONFIGURED
+        error: Soroban contract integration is not configured (missing contract ID)
+        retryable: false

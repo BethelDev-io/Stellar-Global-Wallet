@@ -8,14 +8,38 @@ import {
   NonRetryableHorizonError,
   SequenceConflictError,
 } from "./stellarErrors";
+import type { TransactionSummary } from "@stellar-global-wallet/types";
 
-export interface TransactionSummary {
+// Re-exported for backward compatibility — this used to be declared locally
+// here. The canonical definition now lives in packages/types (issue #107)
+// so it can be shared with future SDK/client packages.
+export type { TransactionSummary };
+
+/**
+ * One payment-shaped item in an account's activity feed (#105). Backed by
+ * Horizon's `/payments` endpoint (operation records), joined with their
+ * parent transaction so `memo` comes back in the same request instead of
+ * one extra Horizon call per item.
+ *
+ * `amount`/`asset_*`/`from`/`to` are only present for operation types that
+ * actually carry a single asset amount (payments and path payments); other
+ * activity (e.g. `create_account`) still shows up so the feed is complete,
+ * just without those fields and without "dust"/"unknown_asset" flags,
+ * which need an amount+asset to evaluate.
+ */
+export interface PaymentHistoryItem {
   id: string;
-  hash: string;
-  ledger: number;
-  created_at: string;
-  operation_count: number;
+  type: string;
+  transactionHash: string;
+  createdAt: string;
+  from: string | undefined;
+  to: string | undefined;
+  amount: string | undefined;
+  assetType: string | undefined;
+  assetCode: string | undefined;
+  assetIssuer: string | undefined;
   memo: string | undefined;
+  flags: PaymentFlag[];
 }
 
 /** Maximum number of tx_bad_seq retries before giving up. */
@@ -110,6 +134,93 @@ export class StellarService {
       return transactions;
     }
     return result;
+  }
+
+  /**
+   * Account activity feed with suspicious-payment heuristics applied (#105).
+   *
+   * Backed by Horizon's `/payments` endpoint rather than `/transactions`:
+   * payments carry `amount`/`asset_*`/`from`/`to` directly, which is what
+   * the dust/unknown-asset heuristics need and what `getTransactions`'s
+   * transaction-level records don't have. `.join("transactions")` pulls
+   * each operation's parent transaction (for `memo`) into the same Horizon
+   * request instead of one extra round trip per item.
+   */
+  async getPaymentHistory(
+    publicKey: string,
+    options?: { limit?: number; cursor?: string }
+  ): Promise<{
+    payments: PaymentHistoryItem[];
+    next: string | undefined;
+    hasMore: boolean;
+  }> {
+    const limit = options?.limit ?? 20;
+    const cursor = options?.cursor;
+
+    let builder = this.server
+      .payments()
+      .forAccount(publicKey)
+      .join("transactions")
+      .limit(limit)
+      .order("desc");
+    if (cursor) {
+      builder = builder.cursor(cursor);
+    }
+    const records = await builder.call();
+
+    const dustThreshold = config.SPAM_DUST_THRESHOLD;
+    const verifiedAssets = parseVerifiedAssetsList(config.VERIFIED_ASSETS);
+
+    const payments: PaymentHistoryItem[] = await Promise.all(
+      records.records.map(async (op) => {
+        // Only payment-shaped operations carry a single amount+asset;
+        // everything else (create_account, account_merge, ...) still shows
+        // up in the feed but without these fields — see PaymentHistoryItem.
+        const amount = "amount" in op ? op.amount : undefined;
+        const assetType = "asset_type" in op ? op.asset_type : undefined;
+        const assetCode = "asset_code" in op ? op.asset_code : undefined;
+        const assetIssuer = "asset_issuer" in op ? op.asset_issuer : undefined;
+        const from = "from" in op ? op.from : undefined;
+        const to = "to" in op ? op.to : undefined;
+
+        // Joined above, so this resolves from the already-fetched response
+        // rather than making a second Horizon request per item.
+        let memo: string | undefined;
+        try {
+          const transaction = await op.transaction();
+          memo = transaction.memo;
+        } catch (err) {
+          console.warn(`[stellar] failed to read joined transaction for operation ${op.id}: ${err}`);
+        }
+
+        const flags = computePaymentFlags(
+          { amount, assetType, assetCode, assetIssuer, memo },
+          { dustThreshold, verifiedAssets }
+        );
+
+        return {
+          id: op.id,
+          type: op.type,
+          transactionHash: op.transaction_hash,
+          createdAt: op.created_at,
+          from,
+          to,
+          amount,
+          assetType,
+          assetCode,
+          assetIssuer,
+          memo,
+          flags,
+        };
+      })
+    );
+
+    const lastRecord = records.records[records.records.length - 1];
+    return {
+      payments,
+      next: lastRecord ? (lastRecord as unknown as { paging_token: string }).paging_token : undefined,
+      hasMore: records.records.length === limit,
+    };
   }
 
   /**

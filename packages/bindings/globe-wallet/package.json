@@ -1,0 +1,20 @@
+{
+  "version": "0.0.0",
+  "name": "@globe-wallet/bindings-globe-wallet",
+  "private": true,
+  "description": "Generated TypeScript bindings for the globe-wallet Soroban contract. Do not hand-edit — regenerated from the built contract wasm by .github/workflows/contract-bindings.yml.",
+  "type": "module",
+  "exports": "./dist/index.js",
+  "typings": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@stellar/stellar-sdk": "^14.5.0",
+    "buffer": "6.0.3"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.2"
+  }
+}

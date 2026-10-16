@@ -31,7 +31,34 @@ export function createApp(
   // proxy hop between them and this process.
   app.set("trust proxy", config.TRUST_PROXY_HOPS);
 
-  app.use(helmet());
+  // helmet()'s defaults are tuned for a server rendering HTML (CSP that
+  // still allows inline styles/scripts via nonces, X-Frame-Options, a
+  // same-origin resource policy meant to protect pages with embeddable
+  // assets). This API never serves HTML or embeddable assets — every
+  // response is JSON — so the HTML-oriented defaults are either useless or
+  // actively wrong here. Configure it explicitly for an API-only surface
+  // instead of relying on defaults that were never written with this case
+  // in mind (issue #119):
+  //   - `default-src 'none'` / `frame-ancestors 'none'`: nothing on this
+  //     origin should ever execute script or be framed — there's no HTML
+  //     to inject into, and no page here should be embeddable.
+  //   - `cross-origin-resource-policy: same-site`: this API is read by
+  //     browser-based clients (web/mobile apps on other origins, once
+  //     built — see root README), so the default `same-origin` would block
+  //     them from even reading responses; `same-site` keeps third-party
+  //     sites that aren't part of this project from loading API responses
+  //     via <script>/<img> while still allowing the project's own apps.
+  app.use(
+    helmet({
+      contentSecurityPolicy: {
+        directives: {
+          defaultSrc: ["'none'"],
+          frameAncestors: ["'none'"],
+        },
+      },
+      crossOriginResourcePolicy: { policy: "same-site" },
+    })
+  );
   app.use(cors({ origin: config.CORS_ORIGIN.split(",") }));
   app.use(morgan("combined"));
 

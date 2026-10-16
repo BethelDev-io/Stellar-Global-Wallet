@@ -59,6 +59,14 @@ const envSchema = z.object({
   // GET /api/v1/flags (issue: "Add a feature-flag endpoint so clients can
   // toggle unfinished features").
   FEATURE_FLAGS: z.string().optional(),
+
+  // Suspicious-payment heuristics for the activity feed (#105). See
+  // src/services/paymentFlags.ts for how these are applied.
+  SPAM_DUST_THRESHOLD: z.coerce.number().positive().default(0.5),
+  // Comma-separated "CODE:ISSUER" pairs. Empty by default — deny-by-default
+  // until a curated list exists (#54): every issued (non-native) asset is
+  // flagged "unknown_asset" until explicitly added here.
+  VERIFIED_ASSETS: z.string().default(""),
 });
 
 export const config = envSchema.parse(process.env);

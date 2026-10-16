@@ -43,6 +43,7 @@ flowchart LR
 | 📱 Mobile app | `mobile/` *(planned)* | React Native · Expo | ⚪ Not started |
 | ⚙️ Backend API | [`backend/`](backend/) | Node.js · Express · TypeScript · PostgreSQL · Redis | 🟡 Testnet |
 | 📜 Smart contracts | [`contract/`](contract/) | Rust · Soroban | 🟡 Testnet |
+| 📦 SDK | [`packages/sdk`](packages/sdk/) | TypeScript, published as `@globe-wallet/sdk` | 🟡 Testnet |
 
 The UI is designed in the [Figma file template](https://claude.ai/artifact/HAEA9kUpEhSMCyjDwCBL6t#page-dcb81aee8d83). For a deep dive into structure, testnet status and the roadmap, see **[HACKMD.md](HACKMD.md)**. For which API URL, contract ID, or feature flags apply to local vs. testnet vs. mainnet, see **[backend/docs/environments.md](backend/docs/environments.md)**.
 
@@ -53,10 +54,15 @@ git clone https://github.com/Genghis-codes/Stellar-Global-Wallet.git
 cd Stellar-Global-Wallet
 ```
 
+This repo is an npm workspace root (`backend`, `packages/*`) — run `npm install` once at the repo root, not inside `backend/`, so the shared `packages/types` package resolves.
+
 | Part | Setup |
 |---|---|
-| ⚙️ Backend | `cd backend && cp .env.example .env && npm install && npm run dev` |
+| ⚙️ Backend (manual) | `npm install && cp backend/.env.example backend/.env && npm run dev --workspace backend` |
+| 🐳 Backend (Docker) | `cp .env.example .env && docker compose up --build` → API on `http://localhost:4000` (Postgres + Redis included) |
+| 🛰️ Local Stellar network | `docker compose --profile local up -d stellar` then `contract/scripts/deploy-local.sh` — avoids testnet resets/Friendbot limits, see [`contract/README.md`](contract/README.md) |
 | 📜 Contracts | `cd contract && cargo test --workspace` |
+| 📦 SDK / packages | `npm install && npm run build --workspaces` (from the repo root) |
 | 🖥️ / 📱 Apps | Not built yet. This is a great place to start contributing! |
 
 Each package's README has full details.
@@ -80,7 +86,7 @@ flowchart LR
 ```
 
 1. Browse the [open issues](https://github.com/Genghis-codes/Stellar-Global-Wallet/issues), or open one with the issue templates.
-2. Read the package's `CONTRIBUTING.md` ([backend](backend/CONTRIBUTING.md) · [contract](contract/CONTRIBUTING.md)).
+2. Read the package's `CONTRIBUTING.md` ([backend](backend/CONTRIBUTING.md) · [contract](contract/CONTRIBUTING.md) · [frontend/mobile](CONTRIBUTING.md)).
 3. Keep each PR focused on one change, and include tests where it makes sense.
 
 ## ⚙️ CI
@@ -89,6 +95,9 @@ flowchart LR
 |---|---|---|
 | `backend.yml` | `backend/` changes | Type-check, Jest tests |
 | `contract.yml` | `contract/` changes | `cargo check`, `cargo test` |
+| `packages.yml` | `packages/*` changes | Lint, type-check, test, build each package |
+| `contract-bindings.yml` | `contract/contracts/globe-wallet/**` changes | Rebuilds the contract wasm, regenerates `packages/bindings/globe-wallet`, fails if stale, type-checks the SDK against it |
+| `release.yml` | PRs and pushes to `main` | Dry-runs (PRs) or performs (`main`, via Changesets) the npm release of `packages/*` |
 
 ## ⚠️ Status
 

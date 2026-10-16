@@ -4,3 +4,7 @@ target/
 **/*.wasm
 Cargo.lock
 .DS_Store
+
+# Written by scripts/deploy-local.sh — contract IDs are specific to
+# whichever ephemeral local network container produced them.
+deployments/local.json

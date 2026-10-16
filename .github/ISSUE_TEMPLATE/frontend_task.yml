@@ -1,0 +1,83 @@
+name: Frontend / Mobile Task
+description: Propose or scope a web or mobile app task (the apps are not built yet — see HACKMD.md).
+title: "[Frontend]: "
+labels: ["frontend-prep"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Before filing, read [CONTRIBUTING.md](../../README.md#-how-you-can-help) and [HACKMD.md](../../HACKMD.md).
+        Every section below is **required**. Issues with empty or placeholder sections will be closed without comment.
+
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Platform
+      description: Which app does this affect?
+      options:
+        - Web
+        - Mobile
+        - Both
+        - SDK / shared package (not UI)
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Context
+      description: >
+        What screen, flow, or shared package does this touch? Link the relevant
+        Figma frame if one exists.
+      placeholder: "e.g. The 'Send payment' flow, step 2 (asset picker) — see Figma frame …"
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: >
+        What gap, risk, or friction does this address? Be specific — not "it
+        would be nice to have X" but why the absence of X is a real problem now.
+    validations:
+      required: true
+
+  - type: textarea
+    id: api_dependencies
+    attributes:
+      label: Backend / SDK dependencies
+      description: >
+        Which backend endpoints or `@globe-wallet/sdk` methods does this rely
+        on? Call out anything that doesn't exist yet.
+      placeholder: "e.g. GET /api/v1/contract/wallet/:address/assets; @globe-wallet/sdk's get_assets()"
+    validations:
+      required: true
+
+  - type: textarea
+    id: definition_of_done
+    attributes:
+      label: Definition of done
+      description: >
+        This list **is** the acceptance criteria — not a menu. A PR that
+        satisfies two out of three bullets is not partial credit; it is an
+        unfinished issue. List every condition that must be true for this
+        task to be considered complete.
+      value: |
+        - [ ] Implementation matches the linked design (or the written spec, if no design exists)
+        - [ ] Works on all platforms listed above
+        - [ ] Accessibility checklist in the PR template is completed
+        - [ ] Tests added that cover the new behavior (specify what they assert)
+        - [ ] Screenshots or a recording attached to the PR
+    validations:
+      required: true
+
+  - type: textarea
+    id: out_of_scope
+    attributes:
+      label: Out of scope
+      description: >
+        Optional. What adjacent work should explicitly NOT happen in this
+        issue's PR (e.g. "do not build the confirmation screen, that's #123").
+    validations:
+      required: false
