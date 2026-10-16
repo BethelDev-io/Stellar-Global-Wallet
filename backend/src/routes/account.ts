@@ -60,5 +60,34 @@ export function createAccountRouter(stellar: StellarService): Router {
     }
   );
 
+  // #105 — activity feed with suspicious-payment flags (dust, memo_url,
+  // unknown_asset). Separate from GET /:publicKey/transactions (which stays
+  // on Horizon's transaction-level records) because flagging needs the
+  // per-payment amount/asset Horizon only returns from /payments.
+  accountRouter.get(
+    "/:publicKey/payments",
+    param("publicKey").custom(isGAddress).withMessage(publicKeyMessage),
+    query("limit")
+      .optional()
+      .isInt({ min: 1, max: 100 })
+      .withMessage("limit must be an integer between 1 and 100")
+      .toInt(),
+    async (req, res, next) => {
+      try {
+        assertValidRequest(req);
+        const limit = (req.query.limit as number | undefined) ?? 20;
+        const cursor = req.query.cursor as string | undefined;
+        const result = await stellar.getPaymentHistory(req.params.publicKey, { limit, cursor });
+        res.json({
+          payments: result.payments,
+          next: result.next,
+          hasMore: result.hasMore,
+        });
+      } catch (err) {
+        next(err);
+      }
+    }
+  );
+
   return accountRouter;
 }

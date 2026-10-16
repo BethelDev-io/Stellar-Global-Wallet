@@ -1,0 +1,76 @@
+# Render Blueprint (#110): a public testnet preview of the backend API so
+# frontend contributors never need to run it themselves.
+#
+# Deploy: https://render.com/docs/infrastructure-as-code -> "New +" ->
+# "Blueprint", point it at this repo. Render reads this file, provisions
+# everything below, and from then on auto-deploys on every push to `main`
+# (per `autoDeploy: true`), matching #110's "auto-deploy on main".
+#
+# After the first deploy, put the resulting URL in backend/README.md where
+# this issue's acceptance criteria asks for it (see the TODO there) — the
+# URL isn't known until Render assigns it, so it can't be filled in here.
+databases:
+  - name: globewallet-preview-db
+    plan: free
+    region: oregon
+    postgresMajorVersion: "16"
+
+services:
+  - type: redis
+    name: globewallet-preview-redis
+    plan: free
+    region: oregon
+    ipAllowList: [] # only reachable from other services in this Render account
+
+  - type: web
+    name: globewallet-api-preview
+    runtime: node
+    plan: free
+    region: oregon
+    rootDir: backend
+    buildCommand: npm ci && npm run build
+    startCommand: npm start
+    autoDeployTrigger: commit
+    branch: main
+    healthCheckPath: /health
+    envVars:
+      # Testnet config (#110's "testnet config") — matches backend/.env.example.
+      - key: NODE_ENV
+        value: production
+      - key: HORIZON_URL
+        value: https://horizon-testnet.stellar.org
+      - key: NETWORK_PASSPHRASE
+        value: "Test SDF Network ; September 2015"
+      - key: SOROBAN_RPC_URL
+        value: https://soroban-testnet.stellar.org
+      - key: SOROBAN_NETWORK_PASSPHRASE
+        value: "Test SDF Network ; September 2015"
+      # Real contract deployed to testnet with a demo user — see
+      # backend/.env.example for details. Lets frontend contributors hit
+      # GET /api/v1/contract/wallet/:publicKey/assets with zero setup.
+      - key: GLOBE_WALLET_CONTRACT_ID
+        value: CBGLPMNSM4FWMIZ6FFBSRN7FNVCHCI2SLZNODA27LEOXFPLWNYEAEP3K
+      # Frontend dev servers / Expo — adjust once real frontend origins exist.
+      - key: CORS_ORIGIN
+        value: "http://localhost:3000,exp://localhost:8081"
+      - key: LOCK_BACKEND
+        value: redis
+      - key: TRUST_PROXY_HOPS
+        value: "1" # Render puts one reverse proxy in front of the service
+      # Secrets management (#110's "edge case to handle"): generated once by
+      # Render at provision time and never committed here. `sync: false`
+      # means "required, but Render prompts for it / generates it" rather
+      # than reading a literal value from this file.
+      - key: JWT_SECRET
+        generateValue: true
+      - key: API_KEY
+        generateValue: true
+      - key: DATABASE_URL
+        fromDatabase:
+          name: globewallet-preview-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: globewallet-preview-redis
+          property: connectionString

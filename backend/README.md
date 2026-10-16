@@ -23,6 +23,24 @@ npm install
 npm run dev            # hot-reload dev server (tsx watch)
 ```
 
+### Public testnet preview (#110)
+
+Frontend contributors shouldn't need to run this backend at all. A
+[`render.yaml`](../render.yaml) Blueprint at the repo root provisions a
+testnet-configured instance (Horizon + Soroban RPC testnet, the demo
+contract from `.env.example`, Postgres, Redis) that auto-deploys on every
+push to `main`.
+
+**TODO (see #110): deploy this Blueprint on Render and put the resulting
+URL here.** Deploying is a one-time action — "New +" → "Blueprint" on
+https://render.com/, pointing at this repo — that an account holder has to
+take; this PR adds the config but can't click that button on anyone's
+behalf. Once deployed, verify it with `./scripts/smoke-test.sh <url>`.
+
+```
+Preview API: <fill in after first deploy>
+```
+
 ## API Reference
 
 ### Health
@@ -37,6 +55,10 @@ GET /health
 GET  /api/v1/account/:publicKey              → account info
 GET  /api/v1/account/:publicKey/balances     → { balances: { XLM: "...", ... } }
 GET  /api/v1/account/:publicKey/transactions → paginated transaction list
+GET  /api/v1/account/:publicKey/payments     → paginated activity feed with
+                                                suspicious-payment `flags`
+                                                (dust/memo_url/unknown_asset)
+                                                — see docs/payment-flags.md
 ```
 
 ### Wallet
