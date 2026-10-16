@@ -8,6 +8,8 @@ import { createAccountRouter } from "./routes/account";
 import { createContractRouter } from "./routes/contract";
 import { priceRouter } from "./routes/price";
 import { authRouter } from "./routes/auth";
+import { cspReportRouter } from "./routes/cspReport";
+import { flagsRouter } from "./routes/flags";
 import { errorHandler } from "./middleware/errorHandler";
 import { config } from "./config";
 import { StellarService } from "./services/stellar";
@@ -32,6 +34,20 @@ export function createApp(
   app.use(helmet());
   app.use(cors({ origin: config.CORS_ORIGIN.split(",") }));
   app.use(morgan("combined"));
+
+  // A multi-signed transaction envelope (several signatures on one XDR
+  // blob) or a fee-bump wrapping one can comfortably exceed a few KB, and
+  // the default 10kb limit below would reject a legitimate request with a
+  // generic 413 before it ever reaches validation. These two routes are
+  // the ones that actually accept an XDR envelope as input (`fee-bump`'s
+  // `transactionXdr`, `submit-multisig`'s `xdr` + its signer key array),
+  // so they get a larger, still-bounded limit; everything else keeps the
+  // tighter default. Registering a path-specific `express.json()` before
+  // the general one works because body-parser marks the body parsed once
+  // one middleware has consumed the stream — the later, broader
+  // `express.json` for every other route is then a no-op for these paths.
+  app.use("/api/v1/wallet/fee-bump", express.json({ limit: "64kb" }));
+  app.use("/api/v1/wallet/submit-multisig", express.json({ limit: "64kb" }));
   app.use(express.json({ limit: "10kb" }));
 
   app.use(
@@ -46,12 +62,21 @@ export function createApp(
   // Health
   app.get("/health", (_req, res) => res.json({ status: "ok" }));
 
+  // Unversioned and unauthenticated: this is where a browser enforcing
+  // the Content-Security-Policy documented in docs/security/csp.md sends
+  // violation reports, not something our own API clients call, so it
+  // doesn't live under /api/v1 alongside the versioned wallet/account/etc.
+  // routes (see issue: "Add Content-Security-Policy guidance for the
+  // future web app").
+  app.use("/csp-report", cspReportRouter);
+
   // Routes
   app.use("/api/v1/wallet", createWalletRouter(stellar));
   app.use("/api/v1/account", createAccountRouter(stellar));
   app.use("/api/v1/contract", createContractRouter(globeWallet));
   app.use("/api/v1/price", priceRouter);
   app.use("/api/v1/auth", authRouter);
+  app.use("/api/v1/flags", flagsRouter);
 
   app.use((req, _res, next) => {
     next(

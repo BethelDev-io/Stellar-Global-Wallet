@@ -52,6 +52,13 @@ const envSchema = z.object({
   // Changing this number is a deliberate, reviewed infra change, not a
   // quick fix — see issue #90.
   TRUST_PROXY_HOPS: z.coerce.number().int().min(0).default(1),
+
+  // Comma-separated `name:true|false` pairs overriding the defaults in
+  // src/services/featureFlags.ts, e.g. `FEATURE_FLAGS=recovery:true`.
+  // Lets ops flip a flag per-environment without a deploy; see
+  // GET /api/v1/flags (issue: "Add a feature-flag endpoint so clients can
+  // toggle unfinished features").
+  FEATURE_FLAGS: z.string().optional(),
 });
 
 export const config = envSchema.parse(process.env);
