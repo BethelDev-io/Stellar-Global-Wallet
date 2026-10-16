@@ -6,6 +6,7 @@ import { logKeypairIssuance } from "../services/auditLog";
 import { StellarService } from "../services/stellar";
 import { isGAddress, publicKeyMessage, destinationMessage } from "../utils/stellarAddress";
 import { validatePathAssets } from "../validation/stellarAsset";
+import { isValidMemoText, memoTextMessage } from "@globe-wallet/sdk";
 import * as StellarSdk from "@stellar/stellar-sdk";
 import { getCachedResult, cacheResult } from "../services/idempotency";
 
@@ -58,7 +59,12 @@ export function createWalletRouter(stellar: StellarService): Router {
       .withMessage(destinationMessage),
     body("amount").isDecimal({ decimal_digits: "0,7" }),
     body("asset").optional().isString(),
-    body("memo").optional().isString().isLength({ max: 28 }),
+    // Stellar's MEMO_TEXT limit is 28 *bytes* once UTF-8 encoded, not 28
+    // characters — `isLength({ max: 28 })` (the previous check here) counts
+    // characters, so it wrongly accepted e.g. a 20-character memo full of
+    // emoji/CJK text that's well over 28 bytes and would be rejected
+    // on-chain. See packages/sdk/src/validate/memo.ts (#103).
+    body("memo").optional().isString().custom(isValidMemoText).withMessage(memoTextMessage),
     body("idempotencyKey").optional().isString().isLength({ max: 255 }),
     (req, res, next) =>
       handleIdempotentRequest(req, res, next, req.body.sourceSecretKey, () => stellar.sendPayment(req.body))
@@ -92,7 +98,12 @@ export function createWalletRouter(stellar: StellarService): Router {
       validatePathAssets(path);
       return true;
     }),
-    body("memo").optional().isString().isLength({ max: 28 }),
+    // Stellar's MEMO_TEXT limit is 28 *bytes* once UTF-8 encoded, not 28
+    // characters — `isLength({ max: 28 })` (the previous check here) counts
+    // characters, so it wrongly accepted e.g. a 20-character memo full of
+    // emoji/CJK text that's well over 28 bytes and would be rejected
+    // on-chain. See packages/sdk/src/validate/memo.ts (#103).
+    body("memo").optional().isString().custom(isValidMemoText).withMessage(memoTextMessage),
     body("idempotencyKey").optional().isString().isLength({ max: 255 }),
     (req, res, next) =>
       handleIdempotentRequest(req, res, next, req.body.sourceSecretKey, () => stellar.pathPaymentStrictSend(req.body))
@@ -116,7 +127,12 @@ export function createWalletRouter(stellar: StellarService): Router {
       validatePathAssets(path);
       return true;
     }),
-    body("memo").optional().isString().isLength({ max: 28 }),
+    // Stellar's MEMO_TEXT limit is 28 *bytes* once UTF-8 encoded, not 28
+    // characters — `isLength({ max: 28 })` (the previous check here) counts
+    // characters, so it wrongly accepted e.g. a 20-character memo full of
+    // emoji/CJK text that's well over 28 bytes and would be rejected
+    // on-chain. See packages/sdk/src/validate/memo.ts (#103).
+    body("memo").optional().isString().custom(isValidMemoText).withMessage(memoTextMessage),
     body("idempotencyKey").optional().isString().isLength({ max: 255 }),
     (req, res, next) =>
       handleIdempotentRequest(req, res, next, req.body.sourceSecretKey, () => stellar.pathPaymentStrictReceive(req.body))
@@ -176,7 +192,12 @@ export function createWalletRouter(stellar: StellarService): Router {
       .withMessage(destinationMessage),
     body("amount").isDecimal({ decimal_digits: "0,7" }),
     body("asset").optional().isString(),
-    body("memo").optional().isString().isLength({ max: 28 }),
+    // Stellar's MEMO_TEXT limit is 28 *bytes* once UTF-8 encoded, not 28
+    // characters — `isLength({ max: 28 })` (the previous check here) counts
+    // characters, so it wrongly accepted e.g. a 20-character memo full of
+    // emoji/CJK text that's well over 28 bytes and would be rejected
+    // on-chain. See packages/sdk/src/validate/memo.ts (#103).
+    body("memo").optional().isString().custom(isValidMemoText).withMessage(memoTextMessage),
     async (req, res, next) => {
       try {
         assertValidRequest(req);
