@@ -43,6 +43,7 @@ flowchart LR
 | 📱 Mobile app | `mobile/` *(planned)* | React Native · Expo | ⚪ Not started |
 | ⚙️ Backend API | [`backend/`](backend/) | Node.js · Express · TypeScript · PostgreSQL · Redis | 🟡 Testnet |
 | 📜 Smart contracts | [`contract/`](contract/) | Rust · Soroban | 🟡 Testnet |
+| 📦 SDK | [`packages/sdk`](packages/sdk/) | TypeScript, published as `@globe-wallet/sdk` | 🟡 Testnet |
 
 The UI is designed in the [Figma file template](https://claude.ai/artifact/HAEA9kUpEhSMCyjDwCBL6t#page-dcb81aee8d83). For a deep dive into structure, testnet status and the roadmap, see **[HACKMD.md](HACKMD.md)**.
 
@@ -57,6 +58,7 @@ cd Stellar-Global-Wallet
 |---|---|
 | ⚙️ Backend | `cd backend && cp .env.example .env && npm install && npm run dev` |
 | 📜 Contracts | `cd contract && cargo test --workspace` |
+| 📦 SDK / packages | `npm install && npm run build --workspaces` (from the repo root) |
 | 🖥️ / 📱 Apps | Not built yet. This is a great place to start contributing! |
 
 Each package's README has full details.
@@ -89,6 +91,9 @@ flowchart LR
 |---|---|---|
 | `backend.yml` | `backend/` changes | Type-check, Jest tests |
 | `contract.yml` | `contract/` changes | `cargo check`, `cargo test` |
+| `packages.yml` | `packages/*` changes | Lint, type-check, test, build each package |
+| `contract-bindings.yml` | `contract/contracts/globe-wallet/**` changes | Rebuilds the contract wasm, regenerates `packages/bindings/globe-wallet`, fails if stale, type-checks the SDK against it |
+| `release.yml` | PRs and pushes to `main` | Dry-runs (PRs) or performs (`main`, via Changesets) the npm release of `packages/*` |
 
 ## ⚠️ Status
 
