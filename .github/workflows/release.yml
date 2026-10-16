@@ -1,0 +1,82 @@
+name: Release
+
+# Versioned npm releases for packages/*, via Changesets:
+# https://github.com/changesets/changesets
+#
+# - On a pull request: dry-runs the publish (no tags, no npm writes) so a
+#   broken release config fails the PR instead of failing silently on merge.
+# - On push to main: if there are pending changesets, opens/updates a
+#   "Version Packages" PR; if that PR has already been merged (so
+#   .changeset/*.md changesets were consumed into version bumps), publishes
+#   the bumped packages to npm with provenance.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency: ${{ github.workflow }}-${{ github.ref }}
+
+permissions:
+  contents: write
+  pull-requests: write
+  id-token: write # required for npm provenance
+
+jobs:
+  dry-run:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Install workspace dependencies
+        run: npm install
+
+      - name: Build publishable packages
+        run: npm run build --workspaces --if-present
+
+      - name: Dry-run publish (no tags, no npm writes)
+        run: npx changeset publish --dry-run
+
+  version-or-publish:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Install workspace dependencies
+        run: npm install
+
+      - name: Build publishable packages
+        run: npm run build --workspaces --if-present
+
+      - name: Create release PR or publish to npm
+        uses: changesets/action@v1
+        with:
+          publish: npm run release
+          commit: "chore: version packages"
+          title: "chore: version packages"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

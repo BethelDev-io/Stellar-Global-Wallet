@@ -6,4 +6,9 @@
 .env.production
 node_modules/
 
+# Root workspace (packages/*) — npm install resolves these at the root,
+# not inside each package, because of npm workspaces hoisting.
+node_modules/
+dist/
+
 # Per-package rules live in backend/.gitignore and contract/.gitignore
