@@ -53,6 +53,59 @@ const tx = await client.add_asset({
 await tx.signAndSend({ signTransaction: wallet.signTransaction });
 ```
 
+### Validation (mirrors the backend's rules — #103)
+
+```ts
+import { isGAddress, isValidMemoText, isValidStellarAmount, memoTextMessage } from "@globe-wallet/sdk";
+
+isGAddress("GBLIQBXTAF3O3YINCRDR5O7H47QHHW5GFOYN4HAD6IKOSWD4LWKWWPHP"); // true
+isGAddress("MA7Q...");                                                  // false — muxed addresses aren't accepted
+
+// Stellar's memo limit is 28 *bytes*, not characters — isValidMemoText
+// checks the real UTF-8 byte length.
+isValidMemoText("a".repeat(28));  // true  (28 bytes)
+isValidMemoText("日".repeat(10)); // false (30 bytes, even though it's 10 characters)
+if (!isValidMemoText(memo)) throw new Error(memoTextMessage);
+
+isValidStellarAmount("12.5000001"); // true  (≤ 7 decimal places)
+isValidStellarAmount("12.50000001"); // false (8 decimal places)
+```
+
+### Formatting (#102)
+
+```ts
+import { formatAmount, formatAsset, parseAmount, shortAddress } from "@globe-wallet/sdk";
+
+formatAmount("1234.5000001", { locale: "en-US" }); // "1,234.5000001"
+formatAmount("1234.5", { locale: "de-DE", decimals: 2 }); // "1.234,50"
+parseAmount("1.234,5000001", { locale: "de-DE" }); // "1234.5000001" — ready for isValidStellarAmount / submission
+
+formatAsset("USDC", "GBLIQBXTAF3O3YINCRDR5O7H47QHHW5GFOYN4HAD6IKOSWD4LWKWWPHP"); // "USDC:GBLI…WPHP"
+shortAddress("GBLIQBXTAF3O3YINCRDR5O7H47QHHW5GFOYN4HAD6IKOSWD4LWKWWPHP"); // "GBLI…WPHP"
+```
+
+### Address-poisoning detection (#104)
+
+```ts
+import { detectLookalike, precheckDestination } from "@globe-wallet/sdk";
+
+// Before showing a send confirmation, check the destination against the
+// user's address book and recent counterparties:
+const match = precheckDestination(destinationAddress, contacts, recentCounterparties);
+if (match) {
+  // Warn: "This address looks similar to {match.matchedAgainst} — check carefully before sending."
+}
+```
+
+### Running the SDK's own tests
+
+```bash
+npm test -w @globe-wallet/sdk          # unit tests (validate/format/security) — no network
+npm run test:smoke -w @globe-wallet/sdk  # against a live deployment, PREVIEW_API_URL required
+```
+
+The smoke suite is what `.github/workflows/sdk-smoke-nightly.yml` runs nightly against a configured `PREVIEW_API_URL` to catch drift between the deployed API and this SDK (#121) — it's excluded from the regular `npm test` run since it needs network access to a specific deployment.
+
 ## Where this comes from
 
 This package wraps the generated bindings in

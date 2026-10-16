@@ -69,3 +69,22 @@ export function createGlobeWalletClient(
     ...options,
   });
 }
+
+/**
+ * Client-side validation mirroring the backend's rules (#103): address
+ * format, issued-asset/path-payment format, memo byte length, amount
+ * decimals.
+ */
+export * from "./validate/index.js";
+
+/**
+ * Shared display formatting for amounts, assets and addresses (#102), so
+ * web and mobile can't drift into inconsistent decimals/truncation.
+ */
+export * from "./format/index.js";
+
+/**
+ * Address-poisoning detection (#104): flag destinations that look like a
+ * recent contact/counterparty but differ.
+ */
+export * from "./security/index.js";
