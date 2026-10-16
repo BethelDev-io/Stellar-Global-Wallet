@@ -47,6 +47,8 @@ flowchart LR
 
 The UI is designed in the [Figma file template](https://claude.ai/artifact/HAEA9kUpEhSMCyjDwCBL6t#page-dcb81aee8d83). For a deep dive into structure, testnet status and the roadmap, see **[HACKMD.md](HACKMD.md)**. For which API URL, contract ID, or feature flags apply to local vs. testnet vs. mainnet, see **[backend/docs/environments.md](backend/docs/environments.md)**.
 
+Frontend behaviour specs live in [`docs/specs/`](docs/specs/): [spend limits](docs/specs/spend-limits.md).
+
 ## 🚀 Quick start
 
 ```bash
