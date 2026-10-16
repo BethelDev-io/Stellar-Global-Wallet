@@ -91,13 +91,13 @@ flowchart TB
 backend/
 ├── src/
 │   ├── index.ts · app.ts · config.ts · db.ts
-│   ├── routes/        account · wallet · contract · auth · price
+│   ├── routes/        account · wallet · contract · auth · price · flags · cspReport
 │   ├── middleware/    jwtAuth · apiKeyAuth (deprecated) · errorHandler · requestValidation
-│   ├── services/      stellar · soroban · contracts/globeWallet · locks/ · auditLog · idempotency
+│   ├── services/      stellar · soroban · contracts/globeWallet · locks/ · auditLog · idempotency · featureFlags
 │   ├── utils/         jwt · stellarAddress
 │   └── validation/    stellarAsset
 ├── tests/             Jest + Supertest
-└── docs/              concurrency · security-model · soroban-integration
+└── docs/              concurrency · security-model · soroban-integration · environments · security/csp
 ```
 
 ### API map
@@ -113,6 +113,10 @@ backend/
 | 📜 Contract | `GET` | `/api/v1/contract/wallet/:publicKey/assets` | — |
 | 📜 Contract | `POST` | `/api/v1/contract/wallet/spend` | 🔒 JWT |
 | 💲 Price | `GET` | `/api/v1/price/:asset` | — *(placeholder, returns `null`)* |
+| 🚩 Feature flags | `GET` | `/api/v1/flags` | — |
+| 🛡️ CSP reports | `POST` | `/csp-report` *(unversioned — see [`docs/security/csp.md`](backend/docs/security/csp.md))* | — |
+
+See [`docs/environments.md`](backend/docs/environments.md) for which URLs/contract IDs/flags apply to local vs. testnet vs. the (not yet deployed) mainnet.
 
 ### A contract call, step by step
 
