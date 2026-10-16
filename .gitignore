@@ -4,5 +4,6 @@
 .env
 .env.local
 .env.production
+node_modules/
 
 # Per-package rules live in backend/.gitignore and contract/.gitignore

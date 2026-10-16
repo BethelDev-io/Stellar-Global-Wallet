@@ -1,0 +1,9 @@
+{
+  "name": "stellar-global-wallet",
+  "private": true,
+  "description": "Workspace root for the Stellar Global Wallet backend API and its shared packages.",
+  "workspaces": [
+    "backend",
+    "packages/*"
+  ]
+}

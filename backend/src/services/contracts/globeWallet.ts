@@ -3,11 +3,12 @@ import { config } from "../../config";
 import { SorobanService, ContractCallResult } from "../soroban";
 import { SorobanNotConfiguredError, SorobanSimulationError, SorobanTransactionError } from "../sorobanErrors";
 import { describeGlobeWalletError } from "./globeWalletErrors";
+import type { AssetInfo } from "@stellar-global-wallet/types";
 
-export interface AssetInfo {
-  code: string;
-  issuer: string | null;
-}
+// Re-exported for backward compatibility — this used to be declared locally
+// here. The canonical definition now lives in packages/types (issue #107)
+// so it can be shared with future SDK/client packages.
+export type { AssetInfo };
 
 function requireContractId(): string {
   if (!config.GLOBE_WALLET_CONTRACT_ID) {

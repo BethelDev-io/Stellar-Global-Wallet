@@ -1,0 +1,78 @@
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: globewallet
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d globewallet"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    ports:
+      - "4000:4000"
+    env_file:
+      # Copy .env.example to .env (see README) for JWT_SECRET, API_KEY,
+      # CORS_ORIGIN, etc. DATABASE_URL/REDIS_URL are intentionally not read
+      # from it — see `environment` below, which points at the containers
+      # on the compose network instead of a developer's local .env values.
+      - .env
+    environment:
+      DATABASE_URL: postgresql://user:password@postgres:5432/globewallet
+      REDIS_URL: redis://redis:6379
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "require('http').get('http://localhost:4000/health', r => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # Local, offline Stellar network (issue #109) — opt in with:
+  #   docker compose --profile local up stellar
+  # Avoids testnet resets and Friendbot rate limits while iterating.
+  # Deploy contracts to it with contract/scripts/deploy-local.sh, which
+  # records the resulting contract IDs in contract/deployments/local.json.
+  stellar:
+    image: stellar/quickstart:testing
+    profiles: ["local"]
+    command: ["--local", "--enable-soroban-rpc"]
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+volumes:
+  postgres-data:
