@@ -52,6 +52,14 @@ const envSchema = z.object({
   // Changing this number is a deliberate, reviewed infra change, not a
   // quick fix — see issue #90.
   TRUST_PROXY_HOPS: z.coerce.number().int().min(0).default(1),
+
+  // Suspicious-payment heuristics for the activity feed (#105). See
+  // src/services/paymentFlags.ts for how these are applied.
+  SPAM_DUST_THRESHOLD: z.coerce.number().positive().default(0.5),
+  // Comma-separated "CODE:ISSUER" pairs. Empty by default — deny-by-default
+  // until a curated list exists (#54): every issued (non-native) asset is
+  // flagged "unknown_asset" until explicitly added here.
+  VERIFIED_ASSETS: z.string().default(""),
 });
 
 export const config = envSchema.parse(process.env);
