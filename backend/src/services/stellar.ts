@@ -8,15 +8,12 @@ import {
   NonRetryableHorizonError,
   SequenceConflictError,
 } from "./stellarErrors";
+import type { TransactionSummary } from "@stellar-global-wallet/types";
 
-export interface TransactionSummary {
-  id: string;
-  hash: string;
-  ledger: number;
-  created_at: string;
-  operation_count: number;
-  memo: string | undefined;
-}
+// Re-exported for backward compatibility — this used to be declared locally
+// here. The canonical definition now lives in packages/types (issue #107)
+// so it can be shared with future SDK/client packages.
+export type { TransactionSummary };
 
 /** Maximum number of tx_bad_seq retries before giving up. */
 const MAX_SEQ_RETRIES = 3;
