@@ -94,6 +94,18 @@ GET /api/v1/price/:asset  → placeholder only; always returns { price_usd: null
                              in src/routes/price.ts
 ```
 
+## Docs for API integrators
+
+- [`docs/rate-limits.md`](docs/rate-limits.md) — limits in effect, the
+  `RateLimit-*` / `Retry-After` headers, and recommended client backoff.
+- [`docs/error-examples.md`](docs/error-examples.md) /
+  [`docs/openapi-errors.yaml`](docs/openapi-errors.yaml) — example response
+  bodies for every error status (400–503), reusable from a mock server.
+- [`docs/security-model.md`](docs/security-model.md) — secret key handling.
+- [`docs/concurrency.md`](docs/concurrency.md) — per-account locking.
+- [`docs/soroban-integration.md`](docs/soroban-integration.md) — Soroban RPC
+  vs. Horizon.
+
 ## Project Structure
 
 ```
@@ -108,7 +120,7 @@ src/
   utils/           # Helpers (JWT)
   types/           # Shared TypeScript types
 tests/             # Jest unit/integration tests
-docs/              # Design docs (e.g. concurrency.md)
+docs/              # Design docs (concurrency, security model, rate limits, error examples)
 ```
 
 ## Related Packages

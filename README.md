@@ -80,7 +80,7 @@ flowchart LR
 ```
 
 1. Browse the [open issues](https://github.com/Genghis-codes/Stellar-Global-Wallet/issues), or open one with the issue templates.
-2. Read the package's `CONTRIBUTING.md` ([backend](backend/CONTRIBUTING.md) · [contract](contract/CONTRIBUTING.md)).
+2. Read the package's `CONTRIBUTING.md` ([backend](backend/CONTRIBUTING.md) · [contract](contract/CONTRIBUTING.md) · [frontend/mobile](CONTRIBUTING.md)).
 3. Keep each PR focused on one change, and include tests where it makes sense.
 
 ## ⚙️ CI
