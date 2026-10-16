@@ -1,0 +1,135 @@
+name: SDK Smoke Test (Preview API)
+
+# Runs the SDK's smoke tests (packages/sdk/tests/smoke) against a live
+# deployed backend every night, to catch drift between what's actually
+# deployed and what the SDK/generated contract bindings expect — the kind
+# of break a PR-time unit test can't see because it never talks to a real
+# deployment (issue #121).
+#
+# Requires the PREVIEW_API_URL repository variable (Settings > Secrets and
+# variables > Actions > Variables) pointing at the deployed backend, e.g.
+# https://globe-wallet-api.example.com. Until it's set, this job reports
+# "skipped" instead of failing and filing an issue every night — same
+# pattern as .github/workflows/backup-database.yml in the sibling
+# stellar-insights repo.
+
+on:
+  schedule:
+    - cron: '0 5 * * *' # Nightly at 05:00 UTC
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check preview URL is configured
+        id: config
+        env:
+          PREVIEW_API_URL: ${{ vars.PREVIEW_API_URL }}
+        run: |
+          if [ -z "$PREVIEW_API_URL" ]; then
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::PREVIEW_API_URL repository variable is not set; skipping SDK smoke tests."
+            echo "### SDK smoke test skipped: PREVIEW_API_URL is not configured." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Check out repository
+        if: steps.config.outputs.configured == 'true'
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        if: steps.config.outputs.configured == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install workspace dependencies
+        if: steps.config.outputs.configured == 'true'
+        run: npm install
+
+      - name: Run SDK smoke tests against the preview API
+        if: steps.config.outputs.configured == 'true'
+        working-directory: packages/sdk
+        env:
+          PREVIEW_API_URL: ${{ vars.PREVIEW_API_URL }}
+          PREVIEW_DEMO_ACCOUNT: ${{ vars.PREVIEW_DEMO_ACCOUNT }}
+        run: npm run test:smoke
+
+      - name: Open or update tracking issue on failure
+        if: failure() && github.event_name == 'schedule'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const title = '[SDK Smoke] Preview API drifted from the SDK';
+            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const body = [
+              'The nightly SDK smoke test against the preview API failed.',
+              '',
+              `- Workflow run: ${runUrl}`,
+              '- This usually means the deployed backend\'s response shape no longer matches what the SDK/generated contract bindings expect.',
+              '- See packages/sdk/tests/smoke/preview-api.test.ts for what was checked.',
+            ].join('\n');
+
+            const { data: open } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              labels: 'sdk',
+              per_page: 100,
+            });
+            const existing = open.find((issue) => issue.title === title);
+            if (existing) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: existing.number,
+                body,
+              });
+            } else {
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title,
+                body,
+                labels: ['sdk', 'bug'],
+              });
+            }
+
+      - name: Close tracking issue on success
+        if: success() && steps.config.outputs.configured == 'true' && github.event_name == 'schedule'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const title = '[SDK Smoke] Preview API drifted from the SDK';
+            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+
+            const { data: open } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              labels: 'sdk',
+              per_page: 100,
+            });
+            const existing = open.find((issue) => issue.title === title);
+            if (existing) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: existing.number,
+                body: `Smoke test passed again (${runUrl}); closing.`,
+              });
+              await github.rest.issues.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: existing.number,
+                state: 'closed',
+              });
+            }

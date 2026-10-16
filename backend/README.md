@@ -116,32 +116,17 @@ GET /api/v1/price/:asset  → placeholder only; always returns { price_usd: null
                              in src/routes/price.ts
 ```
 
-## Testing
+## Docs for API integrators
 
-```bash
-npm test          # unit + mocked integration tests — no network access
-npm run type-check
-```
-
-### Testnet e2e suite (#123)
-
-A separate suite builds a transaction, signs it with a key that only ever
-exists in the test process, and submits it against real testnet — proving
-the non-custodial flow (payment, path payment) actually works, plus a read
-and a rejection check against the live `globe-wallet` contract. It's gated
-behind `E2E_TESTNET=1` and excluded from `npm test` (see `jest.config.js`'s
-`testPathIgnorePatterns` and `jest.e2e.config.js`) because it depends on
-Horizon/Soroban RPC/Friendbot being reachable, so it must never block or
-flake a regular PR run. It runs nightly via
-`.github/workflows/e2e-testnet-nightly.yml`.
-
-```bash
-E2E_TESTNET=1 npm run test:e2e
-```
-
-Without `E2E_TESTNET=1` set, `npm run test:e2e` still exits 0 — every test
-in it is a top-level `describe.skip` in that case, so it's safe to run by
-accident.
+- [`docs/rate-limits.md`](docs/rate-limits.md) — limits in effect, the
+  `RateLimit-*` / `Retry-After` headers, and recommended client backoff.
+- [`docs/error-examples.md`](docs/error-examples.md) /
+  [`docs/openapi-errors.yaml`](docs/openapi-errors.yaml) — example response
+  bodies for every error status (400–503), reusable from a mock server.
+- [`docs/security-model.md`](docs/security-model.md) — secret key handling.
+- [`docs/concurrency.md`](docs/concurrency.md) — per-account locking.
+- [`docs/soroban-integration.md`](docs/soroban-integration.md) — Soroban RPC
+  vs. Horizon.
 
 ## Project Structure
 
@@ -157,7 +142,7 @@ src/
   utils/           # Helpers (JWT)
   types/           # Shared TypeScript types
 tests/             # Jest unit/integration tests
-docs/              # Design docs (e.g. concurrency.md)
+docs/              # Design docs (concurrency, security model, rate limits, error examples)
 ```
 
 ## Related Packages

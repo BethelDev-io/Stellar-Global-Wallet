@@ -1,0 +1,12 @@
+node_modules
+**/node_modules
+backend/dist
+**/dist
+backend/coverage
+.git
+.github
+contract/target
+contract/.soroban
+*.log
+.env
+.env.local

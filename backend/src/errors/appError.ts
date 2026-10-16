@@ -47,6 +47,12 @@ export class UnauthorizedError extends AppError {
   }
 }
 
+export class PayloadTooLargeError extends AppError {
+  constructor(message = "Request body exceeds the configured size limit") {
+    super(message, { code: "PAYLOAD_TOO_LARGE", status: 413 });
+  }
+}
+
 export class ValidationError extends AppError {
   readonly details: ValidationIssue[];
 

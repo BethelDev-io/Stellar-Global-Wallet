@@ -13,6 +13,8 @@
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
+    "@globe-wallet/sdk": "^0.1.0",
+    "@stellar-global-wallet/types": "^0.1.0",
     "@stellar/stellar-sdk": "^16.0.1",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",

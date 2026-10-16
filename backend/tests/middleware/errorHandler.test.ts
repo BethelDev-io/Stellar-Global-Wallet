@@ -116,6 +116,28 @@ describe("errorHandler", () => {
     });
   });
 
+  it("maps body-parser's entity.too.large error to 413 PAYLOAD_TOO_LARGE instead of 500 (issue #124)", () => {
+    const res = mockRes();
+    // Shape body-parser actually throws for express.json({ limit }) — a
+    // plain Error, not one of our AppError subclasses, with `type` and
+    // `status` set. Before this fix it fell through to the generic
+    // `error instanceof Error` branch and was reported as a 500
+    // INTERNAL_ERROR, hiding a client-side mistake behind a server-failure
+    // code and making it impossible to document a real 413 example.
+    const err = Object.assign(new Error("request entity too large"), {
+      type: "entity.too.large",
+      status: 413,
+    });
+
+    errorHandler(err, {} as never, res, jest.fn());
+
+    expect(res.status).toHaveBeenCalledWith(413);
+    expect(res.json).toHaveBeenCalledWith({
+      error: "Request body exceeds the configured size limit",
+      code: "PAYLOAD_TOO_LARGE",
+    });
+  });
+
   it("falls back to 500 for a generic error", () => {
     const res = mockRes();
     errorHandler(new Error("something else broke"), {} as never, res, jest.fn());

@@ -1,0 +1,47 @@
+name: Packages CI
+
+on:
+  push:
+    paths:
+      - "packages/**"
+      - "package.json"
+      - "package-lock.json"
+      - ".github/workflows/packages.yml"
+  pull_request:
+    paths:
+      - "packages/**"
+      - "package.json"
+      - "package-lock.json"
+      - ".github/workflows/packages.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install workspace dependencies
+        run: npm install
+
+      - name: Lint
+        run: npm run lint --workspaces --if-present
+
+      - name: Type-check
+        run: npm run type-check --workspaces --if-present
+
+      - name: Test
+        run: npm test --workspaces --if-present
+
+      - name: Build
+        run: npm run build --workspaces --if-present

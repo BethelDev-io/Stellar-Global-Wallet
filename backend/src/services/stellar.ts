@@ -8,20 +8,12 @@ import {
   NonRetryableHorizonError,
   SequenceConflictError,
 } from "./stellarErrors";
-import {
-  computePaymentFlags,
-  parseVerifiedAssetsList,
-  type PaymentFlag,
-} from "./paymentFlags";
+import type { TransactionSummary } from "@stellar-global-wallet/types";
 
-export interface TransactionSummary {
-  id: string;
-  hash: string;
-  ledger: number;
-  created_at: string;
-  operation_count: number;
-  memo: string | undefined;
-}
+// Re-exported for backward compatibility — this used to be declared locally
+// here. The canonical definition now lives in packages/types (issue #107)
+// so it can be shared with future SDK/client packages.
+export type { TransactionSummary };
 
 /**
  * One payment-shaped item in an account's activity feed (#105). Backed by

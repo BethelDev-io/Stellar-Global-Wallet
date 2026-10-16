@@ -1,0 +1,16 @@
+{
+  "name": "stellar-global-wallet",
+  "private": true,
+  "description": "Workspace root for GlobeWallet's publishable packages (backend and contract are not part of this workspace and keep their own independent tooling).",
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "changeset": "changeset",
+    "version-packages": "changeset version",
+    "release": "npm run build --workspaces --if-present && changeset publish"
+  },
+  "devDependencies": {
+    "@changesets/cli": "^2.27.1"
+  }
+}

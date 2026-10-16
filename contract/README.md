@@ -55,6 +55,27 @@ soroban contract deploy \
   --network testnet
 ```
 
+### Local network (offline development)
+
+Testnet resets and Friendbot rate limits slow down iterating on contracts.
+Run a local, standalone Stellar network with [`stellar/quickstart`](https://github.com/stellar/quickstart)
+instead:
+
+```bash
+# from the repo root
+docker compose --profile local up -d stellar   # waits for :8000/health internally
+
+# build + deploy both contracts to it, writes deployments/local.json
+./contract/scripts/deploy-local.sh
+```
+
+`deployments/local.json` records the network RPC URL, passphrase, deployer
+address and both contracts' IDs. The script prints the exact
+`backend/.env` values to copy so the API can talk to the local deployment
+instead of testnet. The file is gitignored — it's a fresh deployment
+record every time the quickstart container restarts, not something to
+commit.
+
 ## Contract: `globe-wallet`
 
 ### API
