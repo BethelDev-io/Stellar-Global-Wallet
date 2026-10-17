@@ -59,6 +59,9 @@ GET  /api/v1/account/:publicKey/payments     → paginated activity feed with
                                                 suspicious-payment `flags`
                                                 (dust/memo_url/unknown_asset)
                                                 — see docs/payment-flags.md
+GET  /api/v1/account/:publicKey/activity     → unified activity feed combining
+                                                classic transactions/payments and
+                                                contract events with composite cursor
 ```
 
 ### Wallet
@@ -88,24 +91,25 @@ or that serialization only holds within a single process.
 
 ```
 GET  /api/v1/contract/wallet/:publicKey/assets  → { assets: [{ code, issuer }] }
+GET  /api/v1/contract/admin                     → { admin, pendingAdmin }
+GET  /api/v1/contract/upgrade                   → { pendingUpgrade }
+POST /api/v1/contract/admin/propose             → { xdr } (unsigned XDR for propose_admin)
+POST /api/v1/contract/admin/accept              → { xdr } (unsigned XDR for accept_admin)
+POST /api/v1/contract/admin/cancel              → { xdr } (unsigned XDR for cancel_admin_transfer)
 POST /api/v1/contract/wallet/spend              → { hash, ledger, successful }
 ```
 
-`GET .../assets` is public (read-only, simulated, no fee). `POST .../spend`
-requires a Bearer token (same as `/wallet/send`) and body:
-```json
-{
-
-  "userSecretKey": "S...",
-  "assetCode": "XLM",
-  "amount": "1000000"
-
-}
-
-```
+`GET .../assets`, `GET .../admin`, and `GET .../upgrade` are public (read-only, simulated, no fee).
+`POST .../spend` and `POST .../admin/*` require a Bearer token.
 Requires `GLOBE_WALLET_CONTRACT_ID` — see `.env.example` and
 [`docs/soroban-integration.md`](docs/soroban-integration.md) for the
 design rationale and a real testnet run.
+
+### Config & Transparency
+
+```
+GET /api/v1/config (and /config)  → { network, horizonUrl, sorobanRpcUrl, contracts: { globeWallet: { contractId, pendingUpgrade } } }
+```
 
 ### Price
 
