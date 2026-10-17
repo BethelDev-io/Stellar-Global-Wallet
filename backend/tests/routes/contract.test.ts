@@ -112,3 +112,96 @@ describe("POST /api/v1/contract/wallet/spend", () => {
     expect(recordSpend).not.toHaveBeenCalled();
   });
 });
+
+describe("GET /api/v1/contract/allowed-tokens", () => {
+  const MOCK_TOKEN_ID = "CBGLPMNSM4FWMIZ6FFBSRN7FNVCHCI2SLZNODA27LEOXFPLWNYEAEP3K";
+
+  it("returns allowed tokens with metadata without authentication (public on-chain read)", async () => {
+    const getAllowedTokens = jest.fn().mockResolvedValue([
+      {
+        address: MOCK_TOKEN_ID,
+        symbol: "USDC",
+        name: "USD Coin",
+        decimals: 7,
+      },
+    ]);
+    const app = buildApp({ getAllowedTokens });
+
+    const res = await request(app)
+      .get("/api/v1/contract/allowed-tokens")
+      .expect(200);
+
+    expect(res.body).toEqual({
+      tokens: [
+        {
+          address: MOCK_TOKEN_ID,
+          symbol: "USDC",
+          name: "USD Coin",
+          decimals: 7,
+        },
+      ],
+    });
+    expect(getAllowedTokens).toHaveBeenCalled();
+  });
+
+  it("supports /tokens/allowed alias", async () => {
+    const getAllowedTokens = jest.fn().mockResolvedValue([]);
+    const app = buildApp({ getAllowedTokens });
+
+    const res = await request(app)
+      .get("/api/v1/contract/tokens/allowed")
+      .expect(200);
+
+    expect(res.body).toEqual({ tokens: [] });
+  });
+
+  it("maps a missing contract ID to 503, not 500", async () => {
+    const getAllowedTokens = jest.fn().mockRejectedValue(new SorobanNotConfiguredError());
+    const app = buildApp({ getAllowedTokens });
+
+    const res = await request(app)
+      .get("/api/v1/contract/allowed-tokens")
+      .expect(503);
+    expect(res.body.code).toBe("SOROBAN_NOT_CONFIGURED");
+  });
+});
+
+describe("GET /api/v1/contract/allowed-tokens/:tokenId", () => {
+  const VALID_TOKEN_ID = "CBGLPMNSM4FWMIZ6FFBSRN7FNVCHCI2SLZNODA27LEOXFPLWNYEAEP3K";
+
+  it("returns true when token is allowed", async () => {
+    const isTokenAllowed = jest.fn().mockResolvedValue(true);
+    const app = buildApp({ isTokenAllowed });
+
+    const res = await request(app)
+      .get(`/api/v1/contract/allowed-tokens/${VALID_TOKEN_ID}`)
+      .expect(200);
+
+    expect(res.body).toEqual({ tokenId: VALID_TOKEN_ID, allowed: true });
+    expect(isTokenAllowed).toHaveBeenCalledWith(VALID_TOKEN_ID);
+  });
+
+  it("returns false when token is not allowed", async () => {
+    const isTokenAllowed = jest.fn().mockResolvedValue(false);
+    const app = buildApp({ isTokenAllowed });
+
+    const res = await request(app)
+      .get(`/api/v1/contract/allowed-tokens/${VALID_TOKEN_ID}`)
+      .expect(200);
+
+    expect(res.body).toEqual({ tokenId: VALID_TOKEN_ID, allowed: false });
+  });
+
+  it("rejects an invalid token address with 400 validation error", async () => {
+    const isTokenAllowed = jest.fn();
+    const app = buildApp({ isTokenAllowed });
+
+    const res = await request(app)
+      .get("/api/v1/contract/allowed-tokens/not-a-valid-contract-id")
+      .expect(400);
+
+    expect(res.body.code).toBe("VALIDATION_ERROR");
+    expect(isTokenAllowed).not.toHaveBeenCalled();
+  });
+});
+

@@ -44,6 +44,15 @@ components:
           - path: publicKey
             location: params
             message: must be a valid Stellar public key (G...)
+    BadRequestContractAddress400:
+      summary: Request failed contract address validation (issue #82)
+      value:
+        code: VALIDATION_ERROR
+        error: Request validation failed
+        details:
+          - path: tokenId
+            location: params
+            message: "Invalid contract address: must be a valid Soroban contract StrKey (C followed by 55 alphanumeric characters)"
     Unauthorized401:
       summary: Missing or invalid credentials
       value:

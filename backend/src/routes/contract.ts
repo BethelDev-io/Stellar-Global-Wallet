@@ -26,6 +26,42 @@ export function createContractRouter(globeWallet: GlobeWalletContract): Router {
     }
   );
 
+  contractRouter.get("/allowed-tokens", async (_req, res, next) => {
+    try {
+      const tokens = await globeWallet.getAllowedTokens();
+      res.json({ tokens });
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  contractRouter.get("/tokens/allowed", async (_req, res, next) => {
+    try {
+      const tokens = await globeWallet.getAllowedTokens();
+      res.json({ tokens });
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  contractRouter.get(
+    "/allowed-tokens/:tokenId",
+    param("tokenId")
+      .isLength({ min: 56, max: 56 })
+      .bail()
+      .custom((val) => typeof val === "string" && /^C[A-Z0-9]{55}$/.test(val))
+      .withMessage("Invalid contract address: must be a valid Soroban contract StrKey (C followed by 55 alphanumeric characters)"),
+    async (req, res, next) => {
+      try {
+        assertValidRequest(req);
+        const allowed = await globeWallet.isTokenAllowed(req.params.tokenId);
+        res.json({ tokenId: req.params.tokenId, allowed });
+      } catch (err) {
+        next(err);
+      }
+    }
+  );
+
   contractRouter.use(jwtAuth);
 
   contractRouter.post(

@@ -60,12 +60,10 @@ what that endpoint actually returns for a given environment — if you add
 or change a flag in `src/services/featureFlags.ts`, update this table in
 the same change.
 
-**With a future `GET /api/v1/config` endpoint**: the acceptance criterion
-for this doc is "kept in sync with `/config`", but that endpoint doesn't
-exist in this codebase yet (see the related issue proposing
-`GET /api/v1/config` to return network passphrase and Horizon/RPC URLs at
-runtime). Until it exists, this table *is* the source of truth and has to
-be kept in sync with `.env.example`/`src/config.ts` by hand — the moment
-`/config` ships, this doc should start citing *it* as the live source and
-this table becomes documentation of what to expect from it, not a
-hand-maintained duplicate.
+**With `GET /api/v1/config` (or `/config`)**: this endpoint serves the live
+configuration and contract deployment manifest (`contract/deployments/<network>.json`,
+issue #84). It returns the network passphrase, Horizon URL, Soroban RPC URL,
+contract IDs (`globeWallet`, `tokenWrapper`), wasm hashes, and deployment metadata
+at runtime. Clients should query `GET /config` or `GET /api/v1/config` to dynamically
+discover contract addresses and environment parameters instead of hardcoding them.
+

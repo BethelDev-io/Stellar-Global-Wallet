@@ -30,3 +30,14 @@ export interface AssetInfo {
   code: string;
   issuer: string | null;
 }
+
+/** An allowed token with contract address and metadata (issue #82). */
+export interface AllowedTokenInfo {
+  address: string;
+  code?: string;
+  name?: string;
+  symbol?: string;
+  decimals?: number;
+  issuer?: string | null;
+}
+
