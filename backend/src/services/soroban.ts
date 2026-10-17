@@ -165,4 +165,44 @@ export class SorobanService {
     }
     return response;
   }
+
+  /**
+   * Builds an unsigned transaction XDR for a contract call.
+   * Assembles simulation footprint and auth when simulation succeeds.
+   */
+  async buildUnsignedTransaction(params: {
+    contractId: string;
+    method: string;
+    args: StellarSdk.xdr.ScVal[];
+    sourcePublicKey: string;
+  }): Promise<string> {
+    const { contractId, method, args, sourcePublicKey } = params;
+    let sourceAccount: StellarSdk.Account;
+    try {
+      sourceAccount = await this.server.getAccount(sourcePublicKey);
+    } catch {
+      sourceAccount = new StellarSdk.Account(sourcePublicKey, "0");
+    }
+    const tx = this.buildInvocation(sourceAccount, contractId, method, args);
+
+    try {
+      const sim = await this.server.simulateTransaction(tx);
+      if (!rpc.Api.isSimulationError(sim)) {
+        const prepared = rpc.assembleTransaction(tx, sim).build();
+        return prepared.toXDR();
+      }
+    } catch {
+      // Fall back to invocation transaction if simulation is not supported
+    }
+
+    return tx.toXDR();
+  }
+
+  /**
+   * Returns the latest ledger sequence from Soroban RPC.
+   */
+  async getLatestLedger(): Promise<number> {
+    const latest = await this.server.getLatestLedger();
+    return latest.sequence;
+  }
 }

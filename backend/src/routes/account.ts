@@ -2,6 +2,7 @@ import { Router } from "express";
 import { param, query } from "express-validator";
 import { assertValidRequest } from "../middleware/requestValidation";
 import { StellarService } from "../services/stellar";
+import { getUnifiedActivityFeed } from "../services/activityFeed";
 import { isGAddress, publicKeyMessage } from "../utils/stellarAddress";
 
 export function createAccountRouter(stellar: StellarService): Router {
@@ -83,6 +84,33 @@ export function createAccountRouter(stellar: StellarService): Router {
           next: result.next,
           hasMore: result.hasMore,
         });
+      } catch (err) {
+        next(err);
+      }
+    }
+  );
+
+  // #79 — activity feed combining classic payments and Soroban contract events
+  accountRouter.get(
+    "/:publicKey/activity",
+    param("publicKey").custom(isGAddress).withMessage(publicKeyMessage),
+    query("limit")
+      .optional()
+      .isInt({ min: 1, max: 100 })
+      .withMessage("limit must be an integer between 1 and 100")
+      .toInt(),
+    async (req, res, next) => {
+      try {
+        assertValidRequest(req);
+        const limit = (req.query.limit as number | undefined) ?? 20;
+        const cursor = req.query.cursor as string | undefined;
+        const result = await getUnifiedActivityFeed({
+          publicKey: req.params.publicKey,
+          limit,
+          cursor,
+          stellar,
+        });
+        res.json(result);
       } catch (err) {
         next(err);
       }
