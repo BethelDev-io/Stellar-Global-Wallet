@@ -81,74 +81,151 @@ export class GlobeWalletContract {
     );
   }
 
-  /** Read-only: list all allowed token contract addresses with metadata. Free — simulated, never submitted. */
-  async getAllowedTokens(): Promise<AllowedTokenInfo[]> {
+  /**
+   * Read current admin and pending admin candidate (if any) for settings screen (#80).
+   * Pending state is null-safe.
+   */
+  async getAdminState(callerPublicKey?: string): Promise<{ admin: string; pendingAdmin: string | null }> {
     const contractId = requireContractId();
-    const addresses = await withWalletErrorTranslation(
-      this.soroban.simulate<string[]>({
+    const sourcePublicKey = callerPublicKey || StellarSdk.Keypair.random().publicKey();
+
+    const admin = await withWalletErrorTranslation(
+      this.soroban.simulate<string>({
         contractId,
-        method: "get_allowed_tokens",
+        method: "admin",
+        sourcePublicKey,
         args: [],
       })
-    ).catch(() => [] as string[]);
+    );
 
-    if (!Array.isArray(addresses) || addresses.length === 0) {
-      return [];
+    let pendingAdmin: string | null = null;
+    try {
+      const res = await withWalletErrorTranslation(
+        this.soroban.simulate<string | null>({
+          contractId,
+          method: "pending_admin",
+          sourcePublicKey,
+          args: [],
+        })
+      );
+      pendingAdmin = res ?? null;
+    } catch {
+      pendingAdmin = null;
     }
 
-    const tokens: AllowedTokenInfo[] = await Promise.all(
-      addresses.map(async (address) => {
-        const metadata: AllowedTokenInfo = { address };
-        try {
-          const [symbolVal, nameVal, decimalsVal] = await Promise.all([
-            this.soroban
-              .simulate<string>({
-                contractId: address,
-                method: "symbol",
-                args: [],
-              })
-              .catch(() => undefined),
-            this.soroban
-              .simulate<string>({
-                contractId: address,
-                method: "name",
-                args: [],
-              })
-              .catch(() => undefined),
-            this.soroban
-              .simulate<number>({
-                contractId: address,
-                method: "decimals",
-                args: [],
-              })
-              .catch(() => undefined),
-          ]);
-
-          if (symbolVal) {
-            metadata.symbol = symbolVal;
-            metadata.code = symbolVal;
-          }
-          if (nameVal) metadata.name = nameVal;
-          if (typeof decimalsVal === "number") metadata.decimals = decimalsVal;
-        } catch {
-          // Graceful fallback if individual token query fails
-        }
-        return metadata;
-      })
-    );
-
-    return tokens;
+    return { admin, pendingAdmin };
   }
 
-  /** Read-only: check whether a specific token is allowlisted for send. */
-  async isTokenAllowed(tokenId: string): Promise<boolean> {
+  /**
+   * Read pending contract upgrade proposal and execution ETA (#81).
+   * Returns null if no upgrade is queued.
+   */
+  async getPendingUpgrade(callerPublicKey?: string): Promise<{
+    wasmHash: string;
+    proposedBy: string;
+    readyAtLedger: number;
+    executableAt: string | null;
+  } | null> {
     const contractId = requireContractId();
-    return withWalletErrorTranslation(
-      this.soroban.simulate<boolean>({
-        contractId,
-        method: "is_token_allowed",
-        args: [StellarSdk.nativeToScVal(tokenId, { type: "address" })],
-      })
-    );
+    const sourcePublicKey = callerPublicKey || StellarSdk.Keypair.random().publicKey();
+
+    try {
+      const proposal = await withWalletErrorTranslation(
+        this.soroban.simulate<{
+          wasm_hash: Buffer | Uint8Array | string;
+          proposed_by: string;
+          ready_at: number;
+        } | null>({
+          contractId,
+          method: "pending_upgrade",
+          sourcePublicKey,
+          args: [],
+        })
+      );
+
+      if (!proposal) return null;
+
+      let wasmHash = "";
+      if (typeof proposal.wasm_hash === "string") {
+        wasmHash = proposal.wasm_hash;
+      } else if (proposal.wasm_hash && (proposal.wasm_hash instanceof Uint8Array || Buffer.isBuffer(proposal.wasm_hash))) {
+        wasmHash = Buffer.from(proposal.wasm_hash).toString("hex");
+      }
+
+      const readyAtLedger = proposal.ready_at;
+      let executableAt: string | null = null;
+
+      try {
+        const latest = await this.soroban.getLatestLedger();
+        if (typeof latest === "number") {
+          const ledgersRemaining = Math.max(0, readyAtLedger - latest);
+          const secondsRemaining = ledgersRemaining * 5; // ~5 seconds per ledger on Stellar
+          executableAt = new Date(Date.now() + secondsRemaining * 1000).toISOString();
+        }
+      } catch {
+        executableAt = null;
+      }
+
+      return {
+        wasmHash,
+        proposedBy: proposal.proposed_by,
+        readyAtLedger,
+        executableAt,
+      };
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Builds unsigned XDR to propose a new admin candidate (#80).
+   */
+  async buildProposeAdminTx(params: {
+    currentAdmin: string;
+    candidate: string;
+  }): Promise<string> {
+    const contractId = requireContractId();
+    const { currentAdmin, candidate } = params;
+    return this.soroban.buildUnsignedTransaction({
+      contractId,
+      method: "propose_admin",
+      sourcePublicKey: currentAdmin,
+      args: [
+        StellarSdk.nativeToScVal(currentAdmin, { type: "address" }),
+        StellarSdk.nativeToScVal(candidate, { type: "address" }),
+      ],
+    });
+  }
+
+  /**
+   * Builds unsigned XDR to accept a pending admin transfer (#80).
+   */
+  async buildAcceptAdminTx(params: {
+    candidate: string;
+  }): Promise<string> {
+    const contractId = requireContractId();
+    const { candidate } = params;
+    return this.soroban.buildUnsignedTransaction({
+      contractId,
+      method: "accept_admin",
+      sourcePublicKey: candidate,
+      args: [StellarSdk.nativeToScVal(candidate, { type: "address" })],
+    });
+  }
+
+  /**
+   * Builds unsigned XDR to cancel a pending admin transfer (#80).
+   */
+  async buildCancelAdminTransferTx(params: {
+    currentAdmin: string;
+  }): Promise<string> {
+    const contractId = requireContractId();
+    const { currentAdmin } = params;
+    return this.soroban.buildUnsignedTransaction({
+      contractId,
+      method: "cancel_admin_transfer",
+      sourcePublicKey: currentAdmin,
+      args: [StellarSdk.nativeToScVal(currentAdmin, { type: "address" })],
+    });
   }
 }

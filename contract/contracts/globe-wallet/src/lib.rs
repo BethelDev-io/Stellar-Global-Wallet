@@ -348,6 +348,13 @@ impl GlobeWallet {
             .expect("not initialized")
     }
 
+    /// Return the pending admin candidate, if any.
+    pub fn pending_admin(env: Env) -> Option<Address> {
+        let admin: Option<Address> = env.storage().instance().get(&DataKey::Admin);
+        let admin = admin?;
+        env.storage().instance().get(&DataKey::PendingAdmin(admin))
+    }
+
     /// Legacy single-step admin transfer.
     ///
     /// Deprecated in favor of `propose_admin` + `accept_admin`.
@@ -536,6 +543,11 @@ impl GlobeWallet {
             (executor, wasm_hash),
         );
         Ok(())
+    }
+
+    /// Return the pending upgrade proposal, if any.
+    pub fn pending_upgrade(env: Env) -> Option<UpgradeProposal> {
+        env.storage().instance().get(&DataKey::PendingUpgrade)
     }
 
     // ── Guardian-Based Admin Recovery ────────────────────────────────────────
@@ -1497,7 +1509,13 @@ impl GlobeWallet {
             &to,
             &amount,
         ) {
-            Ok(Ok(())) => Ok(()),
+            Ok(Ok(())) => {
+                env.events().publish(
+                    (Symbol::new(&env, "send_executed"),),
+                    (user, token_id, to, amount),
+                );
+                Ok(())
+            }
             // Ok(Err(_)): token-wrapper returned a typed WrapperError (bad
             // allowance, invalid amount, ...). Err(_): the call couldn't be
             // completed at all (e.g. conversion/invoke-level failure). Both
@@ -2375,6 +2393,27 @@ mod tests {
         client.execute_upgrade(&admin, &never_uploaded_hash);
     }
 
+    #[test]
+    fn test_pending_upgrade_query_lifecycle() {
+        let env = Env::default();
+        env.mock_all_auths();
+        let id = env.register_contract(None, GlobeWallet);
+        let client = GlobeWalletClient::new(&env, &id);
+        let admin = Address::generate(&env);
+        client.initialize(&admin);
+
+        assert_eq!(client.pending_upgrade(), None);
+
+        let hash = BytesN::from_array(&env, &[7u8; 32]);
+        client.propose_upgrade(&admin, &hash, &GlobeWallet::MIN_UPGRADE_DELAY_LEDGERS);
+
+        let pending = client.pending_upgrade();
+        assert!(pending.is_some());
+        let prop = pending.unwrap();
+        assert_eq!(prop.wasm_hash, hash);
+        assert_eq!(prop.proposed_by, admin);
+    }
+
     // ── Issue #84: minimum timelock delays ──────────────────────────────────
 
     #[test]
@@ -3103,6 +3142,26 @@ mod tests {
         assert_eq!(client.admin(), admin);
     }
 
+    #[test]
+    fn test_pending_admin_query_lifecycle() {
+        let (env, _cid, admin, client) = setup();
+        assert_eq!(client.pending_admin(), None);
+
+        let candidate = Address::generate(&env);
+        client.propose_admin(&admin, &candidate);
+        assert_eq!(client.pending_admin(), Some(candidate.clone()));
+
+        client.cancel_admin_transfer(&admin);
+        assert_eq!(client.pending_admin(), None);
+
+        client.propose_admin(&admin, &candidate);
+        assert_eq!(client.pending_admin(), Some(candidate.clone()));
+
+        client.accept_admin(&candidate);
+        assert_eq!(client.pending_admin(), None);
+        assert_eq!(client.admin(), candidate);
+    }
+
     // ═══════════════════════════════════════════════════════════════════════════
     // record_spend day-boundary rigorous tests
     //
@@ -3357,6 +3416,7 @@ mod tests {
         assert_eq!(token.balance(&user), 800);
         assert_eq!(token.balance(&to), 200);
         assert_eq!(wrapper_client.allowance(&user, &wallet_id).amount, 300);
+        assert!(find_event(&env, "send_executed").is_some());
     }
 
     #[test]

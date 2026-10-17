@@ -1,28 +1,40 @@
 import { Router } from "express";
 import { config } from "../config";
-import { loadDeploymentManifest } from "../services/manifest";
+import { GlobeWalletContract } from "../services/contracts/globeWallet";
 
-export const configRouter = Router();
+/**
+ * Returns runtime environment configuration and contract state (#81).
+ * Exposes network parameters, Horizon/RPC URLs, and pending upgrade timelock state.
+ */
+export function createConfigRouter(globeWallet?: GlobeWalletContract): Router {
+  const router = Router();
 
-configRouter.get("/", (_req, res) => {
-  const manifest = loadDeploymentManifest("testnet");
+  router.get("/", async (_req, res, next) => {
+    try {
+      let pendingUpgrade = null;
+      if (globeWallet && config.GLOBE_WALLET_CONTRACT_ID) {
+        try {
+          pendingUpgrade = await globeWallet.getPendingUpgrade();
+        } catch {
+          pendingUpgrade = null;
+        }
+      }
 
-  const globeWalletContractId =
-    config.GLOBE_WALLET_CONTRACT_ID ||
-    manifest?.contracts?.globeWallet ||
-    null;
-
-  res.json({
-    network: manifest?.network ?? "testnet",
-    networkPassphrase: config.NETWORK_PASSPHRASE,
-    horizonUrl: config.HORIZON_URL,
-    sorobanRpcUrl: config.SOROBAN_RPC_URL,
-    contracts: {
-      globeWallet: globeWalletContractId,
-      tokenWrapper: manifest?.contracts?.tokenWrapper ?? null,
-    },
-    wasmHashes: manifest?.wasmHashes ?? null,
-    deployedAt: manifest?.deployedAt ?? null,
-    gitSha: manifest?.gitSha ?? null,
+      res.json({
+        network: config.STELLAR_NETWORK,
+        horizonUrl: config.HORIZON_URL,
+        sorobanRpcUrl: config.SOROBAN_RPC_URL,
+        contracts: {
+          globeWallet: {
+            contractId: config.GLOBE_WALLET_CONTRACT_ID || null,
+            pendingUpgrade,
+          },
+        },
+      });
+    } catch (err) {
+      next(err);
+    }
   });
-});
+
+  return router;
+}

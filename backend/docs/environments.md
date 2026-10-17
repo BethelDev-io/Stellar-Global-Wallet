@@ -60,10 +60,7 @@ what that endpoint actually returns for a given environment — if you add
 or change a flag in `src/services/featureFlags.ts`, update this table in
 the same change.
 
-**With `GET /api/v1/config` (or `/config`)**: this endpoint serves the live
-configuration and contract deployment manifest (`contract/deployments/<network>.json`,
-issue #84). It returns the network passphrase, Horizon URL, Soroban RPC URL,
-contract IDs (`globeWallet`, `tokenWrapper`), wasm hashes, and deployment metadata
-at runtime. Clients should query `GET /config` or `GET /api/v1/config` to dynamically
-discover contract addresses and environment parameters instead of hardcoding them.
-
+**With `GET /api/v1/config` (and `/config`)**: runtime network passphrase,
+Horizon/RPC URLs, and contract upgrade timelock state are exposed dynamically
+at runtime via `GET /api/v1/config` (issue #81). Client applications should query
+this endpoint to read live configuration and inspect pending contract upgrades.

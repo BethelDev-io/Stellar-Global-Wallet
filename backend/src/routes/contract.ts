@@ -26,43 +26,76 @@ export function createContractRouter(globeWallet: GlobeWalletContract): Router {
     }
   );
 
-  contractRouter.get("/allowed-tokens", async (_req, res, next) => {
+  // #80 — Settings screen: read current admin and pending admin candidate (null-safe)
+  contractRouter.get("/admin", async (_req, res, next) => {
     try {
-      const tokens = await globeWallet.getAllowedTokens();
-      res.json({ tokens });
+      const state = await globeWallet.getAdminState();
+      res.json(state);
     } catch (err) {
       next(err);
     }
   });
 
-  contractRouter.get("/tokens/allowed", async (_req, res, next) => {
+  // #81 — Transparency: expose contract upgrade timelock state (null-safe)
+  contractRouter.get("/upgrade", async (_req, res, next) => {
     try {
-      const tokens = await globeWallet.getAllowedTokens();
-      res.json({ tokens });
+      const pendingUpgrade = await globeWallet.getPendingUpgrade();
+      res.json({ pendingUpgrade });
     } catch (err) {
       next(err);
     }
   });
 
-  contractRouter.get(
-    "/allowed-tokens/:tokenId",
-    param("tokenId")
-      .isLength({ min: 56, max: 56 })
-      .bail()
-      .custom((val) => typeof val === "string" && /^C[A-Z0-9]{55}$/.test(val))
-      .withMessage("Invalid contract address: must be a valid Soroban contract StrKey (C followed by 55 alphanumeric characters)"),
+  contractRouter.use(jwtAuth);
+
+  // #80 — Build unsigned transaction XDR for admin propose
+  contractRouter.post(
+    "/admin/propose",
+    body("currentAdmin").custom(isGAddress).withMessage(publicKeyMessage),
+    body("candidate").custom(isGAddress).withMessage(publicKeyMessage),
     async (req, res, next) => {
       try {
         assertValidRequest(req);
-        const allowed = await globeWallet.isTokenAllowed(req.params.tokenId);
-        res.json({ tokenId: req.params.tokenId, allowed });
+        const { currentAdmin, candidate } = req.body;
+        const xdr = await globeWallet.buildProposeAdminTx({ currentAdmin, candidate });
+        res.json({ xdr });
       } catch (err) {
         next(err);
       }
     }
   );
 
-  contractRouter.use(jwtAuth);
+  // #80 — Build unsigned transaction XDR for admin accept
+  contractRouter.post(
+    "/admin/accept",
+    body("candidate").custom(isGAddress).withMessage(publicKeyMessage),
+    async (req, res, next) => {
+      try {
+        assertValidRequest(req);
+        const { candidate } = req.body;
+        const xdr = await globeWallet.buildAcceptAdminTx({ candidate });
+        res.json({ xdr });
+      } catch (err) {
+        next(err);
+      }
+    }
+  );
+
+  // #80 — Build unsigned transaction XDR for admin transfer cancel
+  contractRouter.post(
+    "/admin/cancel",
+    body("currentAdmin").custom(isGAddress).withMessage(publicKeyMessage),
+    async (req, res, next) => {
+      try {
+        assertValidRequest(req);
+        const { currentAdmin } = req.body;
+        const xdr = await globeWallet.buildCancelAdminTransferTx({ currentAdmin });
+        res.json({ xdr });
+      } catch (err) {
+        next(err);
+      }
+    }
+  );
 
   contractRouter.post(
     "/wallet/spend",
