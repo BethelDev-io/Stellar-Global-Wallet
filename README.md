@@ -65,6 +65,7 @@ This repo is an npm workspace root (`backend`, `packages/*`) — run `npm instal
 | 🛰️ Local Stellar network | `docker compose --profile local up -d stellar` then `contract/scripts/deploy-local.sh` — avoids testnet resets/Friendbot limits, see [`contract/README.md`](contract/README.md) |
 | 📜 Contracts | `cd contract && cargo test --workspace` |
 | 📦 SDK / packages | `npm install && npm run build --workspaces` (from the repo root) |
+| 🧪 Seeded Demo Wallet | `npm run seed:demo --workspace backend` — provisions 5 testnet accounts, assets, limits, and recovery state |
 | 🖥️ / 📱 Apps | Not built yet. This is a great place to start contributing! |
 
 Each package's README has full details.

@@ -55,6 +55,8 @@ pub enum DataKey {
     /// move. Membership only — presence of the key means "allowed"; see
     /// `add_allowed_token`/`remove_allowed_token`/`is_token_allowed`.
     AllowedToken(Address),
+    /// Admin-curated list of all allowed token contract addresses.
+    AllowedTokens,
 }
 
 /// `DailySpent` used to live in *temporary* storage while `SpendLimit` lives in
@@ -1359,6 +1361,25 @@ impl GlobeWallet {
             PERSISTENT_TTL_THRESHOLD,
             PERSISTENT_TTL_EXTEND_TO,
         );
+
+        let mut list: Vec<Address> = env
+            .storage()
+            .instance()
+            .get(&DataKey::AllowedTokens)
+            .unwrap_or_else(|| Vec::new(&env));
+        let mut exists = false;
+        for i in 0..list.len() {
+            if list.get(i).unwrap() == token_id {
+                exists = true;
+                break;
+            }
+        }
+        if !exists {
+            list.push_back(token_id.clone());
+            env.storage().instance().set(&DataKey::AllowedTokens, &list);
+            Self::bump_instance_ttl(&env);
+        }
+
         env.events().publish(
             (Symbol::new(&env, "token_allowed"),),
             token_id,
@@ -1373,6 +1394,22 @@ impl GlobeWallet {
         env.storage()
             .persistent()
             .remove(&DataKey::AllowedToken(token_id.clone()));
+
+        let list: Vec<Address> = env
+            .storage()
+            .instance()
+            .get(&DataKey::AllowedTokens)
+            .unwrap_or_else(|| Vec::new(&env));
+        let mut new_list = Vec::new(&env);
+        for i in 0..list.len() {
+            let item = list.get(i).unwrap();
+            if item != token_id {
+                new_list.push_back(item);
+            }
+        }
+        env.storage().instance().set(&DataKey::AllowedTokens, &new_list);
+        Self::bump_instance_ttl(&env);
+
         env.events().publish(
             (Symbol::new(&env, "token_disallowed"),),
             token_id,
@@ -1386,6 +1423,19 @@ impl GlobeWallet {
             .persistent()
             .get(&DataKey::AllowedToken(token_id))
             .unwrap_or(false)
+    }
+
+    /// Return the list of all allowed token contract addresses.
+    pub fn get_allowed_tokens(env: Env) -> Vec<Address> {
+        env.storage()
+            .instance()
+            .get(&DataKey::AllowedTokens)
+            .unwrap_or_else(|| Vec::new(&env))
+    }
+
+    /// Return the list of all allowed token contract addresses (alias).
+    pub fn allowed_tokens(env: Env) -> Vec<Address> {
+        Self::get_allowed_tokens(env)
     }
 
     /// Atomically enforce the daily spend limit and move `amount` of
@@ -3456,6 +3506,35 @@ mod tests {
         assert!(client.is_token_allowed(&token_id));
         client.remove_allowed_token(&admin, &token_id);
         assert!(!client.is_token_allowed(&token_id));
+    }
+
+    #[test]
+    fn test_get_allowed_tokens_list() {
+        let (env, _wallet_id, admin, client, _wrapper_client) = setup_wiring();
+        assert_eq!(client.get_allowed_tokens().len(), 0);
+        assert_eq!(client.allowed_tokens().len(), 0);
+
+        let token_admin1 = Address::generate(&env);
+        let (token_id1, _tac1, _t1) = create_real_token(&env, &token_admin1);
+        let token_admin2 = Address::generate(&env);
+        let (token_id2, _tac2, _t2) = create_real_token(&env, &token_admin2);
+
+        client.add_allowed_token(&admin, &token_id1);
+        client.add_allowed_token(&admin, &token_id2);
+
+        let tokens = client.get_allowed_tokens();
+        assert_eq!(tokens.len(), 2);
+        assert_eq!(tokens.get(0).unwrap(), token_id1);
+        assert_eq!(tokens.get(1).unwrap(), token_id2);
+
+        // Re-adding same token is idempotent
+        client.add_allowed_token(&admin, &token_id1);
+        assert_eq!(client.get_allowed_tokens().len(), 2);
+
+        client.remove_allowed_token(&admin, &token_id1);
+        let remaining = client.get_allowed_tokens();
+        assert_eq!(remaining.len(), 1);
+        assert_eq!(remaining.get(0).unwrap(), token_id2);
     }
 
     #[test]
