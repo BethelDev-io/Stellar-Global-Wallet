@@ -1,0 +1,28 @@
+{
+  "payment.received.title": "Payment received",
+  "payment.received.body": "You received {amount} {asset}",
+
+  "recovery.initiated.title": "⚠️ Recovery initiated on your wallet",
+  "recovery.initiated.body": "Someone has started a recovery process on your account. If this was not you, contact support immediately.",
+
+  "recovery.approved.title": "Recovery approval received",
+  "recovery.approved.body": "A guardian has approved the recovery request for your wallet.",
+
+  "guardian.added.title": "Guardian added to your wallet",
+  "guardian.added.body": "A new guardian has been added to your wallet's recovery configuration.",
+
+  "guardian.removed.title": "Guardian removed from your wallet",
+  "guardian.removed.body": "A guardian has been removed from your wallet's recovery configuration.",
+
+  "guardian.approval_needed.title": "Recovery approval needed",
+  "guardian.approval_needed.body": "A wallet recovery has been initiated and requires your approval.",
+
+  "email.verify.subject": "Verify your GlobeWallet email address",
+  "email.verify.body": "Click the link below to verify your email address. This link expires in {expiresInHours} hours.\n\n{verificationUrl}\n\nIf you did not request this, you can safely ignore this email.",
+
+  "email.recovery_initiated.subject": "⚠️ Security alert: Wallet recovery initiated",
+  "email.recovery_initiated.body": "A recovery process has been initiated on your GlobeWallet account.\n\nIf this was not you, please contact support immediately.\n\nEvent ID: {eventId}",
+
+  "email.large_send.subject": "Large outgoing payment: {amount} {asset}",
+  "email.large_send.body": "A large payment of {amount} {asset} was sent from your GlobeWallet account to {destination}.\n\nIf you did not authorise this, contact support immediately."
+}

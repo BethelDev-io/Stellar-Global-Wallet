@@ -45,3 +45,6 @@ jobs:
 
       - name: Build
         run: npm run build --workspaces --if-present
+
+      - name: Check i18n catalogue completeness
+        run: npm run i18n:check --workspace=packages/i18n

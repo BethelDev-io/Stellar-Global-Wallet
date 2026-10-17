@@ -23,6 +23,7 @@ import { config } from "../config";
 import { pool } from "../db";
 import { getDevicesForAccounts } from "./deviceRegistry";
 import { sendPushToAll } from "./pushSender";
+import { tNotification } from "./i18nHelper";
 
 const DEDUP_KEY_PREFIX = "orbit-wal:notif-dedup:payment:";
 const DEDUP_TTL_SECONDS = 48 * 60 * 60; // 48 h
@@ -166,9 +167,17 @@ async function handlePayment(account: string, record: unknown): Promise<void> {
       ? "XLM"
       : (payment.asset_code ?? "asset");
 
+  // Use the first device's locale as a best-effort locale for the message.
+  // All devices for an account share the same owner so the first locale is
+  // representative; a per-device locale would require sending N messages.
+  const locale = devices[0]?.locale ?? "en";
+
   await sendPushToAll(devices, {
-    title: "Payment received",
-    body: `You received ${amount} ${assetLabel}`,
+    title: tNotification("payment.received.title", locale),
+    body: tNotification("payment.received.body", locale, {
+      amount: String(amount),
+      asset: assetLabel,
+    }),
     data: { operationId: payment.id, account, amount, asset: assetLabel },
   });
 
