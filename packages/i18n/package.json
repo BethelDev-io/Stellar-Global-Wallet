@@ -1,0 +1,14 @@
+{
+  "name": "@globe-wallet/i18n",
+  "version": "0.1.0",
+  "description": "Typed i18n message catalogues for API error codes and notification templates",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "scripts": {
+    "i18n:check": "tsx scripts/check-missing-keys.ts"
+  },
+  "devDependencies": {
+    "tsx": "^4.7.1",
+    "typescript": "^5.4.2"
+  }
+}

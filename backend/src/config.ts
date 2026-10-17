@@ -60,6 +60,20 @@ const envSchema = z.object({
   // toggle unfinished features").
   FEATURE_FLAGS: z.string().optional(),
 
+  // #90 — email notification fallback channel.
+  // Provider: "console" (default, dev-safe), "resend", or "ses".
+  EMAIL_PROVIDER: z.enum(["console", "resend", "ses"]).default("console"),
+  // Sender address used by all transactional emails.
+  EMAIL_FROM: z.string().email().default("noreply@globewallet.app"),
+  // Resend API key (required when EMAIL_PROVIDER=resend).
+  RESEND_API_KEY: z.string().optional(),
+  // AWS SES variables (required when EMAIL_PROVIDER=ses).
+  AWS_SES_REGION: z.string().optional(),
+  AWS_SES_ACCESS_KEY_ID: z.string().optional(),
+  AWS_SES_SECRET_ACCESS_KEY: z.string().optional(),
+  // Public base URL used to build email verification links.
+  BASE_URL: z.string().url().default("https://app.globewallet.app"),
+
   // Suspicious-payment heuristics for the activity feed (#105). See
   // src/services/paymentFlags.ts for how these are applied.
   SPAM_DUST_THRESHOLD: z.coerce.number().positive().default(0.5),

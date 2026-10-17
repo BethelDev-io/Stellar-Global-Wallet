@@ -11,6 +11,8 @@ import { authRouter } from "./routes/auth";
 import { cspReportRouter } from "./routes/cspReport";
 import { flagsRouter } from "./routes/flags";
 import { devicesRouter } from "./routes/devices";
+import { emailRouter } from "./routes/email";
+import { localeMiddleware } from "./middleware/locale";
 import { errorHandler } from "./middleware/errorHandler";
 import { config } from "./config";
 import { StellarService } from "./services/stellar";
@@ -87,6 +89,9 @@ export function createApp(
     })
   );
 
+  // #93 — resolve Accept-Language into req.locale for all routes.
+  app.use(localeMiddleware);
+
   // Health
   app.get("/health", (_req, res) => res.json({ status: "ok" }));
 
@@ -107,6 +112,8 @@ export function createApp(
   app.use("/api/v1/flags", flagsRouter);
   // #87 — push notification device registration
   app.use("/api/v1/me/devices", devicesRouter);
+  // #90 — email notification fallback (verified email management)
+  app.use("/api/v1/me/email", emailRouter);
 
   app.use((req, _res, next) => {
     next(

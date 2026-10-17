@@ -31,6 +31,7 @@ import { createClient } from "redis";
 import { config } from "../config";
 import { getDevicesForAccounts } from "./deviceRegistry";
 import { sendPushToAll } from "./pushSender";
+import { tNotification } from "./i18nHelper";
 
 const DEDUP_KEY_PREFIX = "orbit-wal:notif-dedup:recovery:";
 const DEDUP_TTL_SECONDS = 48 * 60 * 60;
@@ -211,10 +212,12 @@ async function processEvent(event: SorobanEvent): Promise<void> {
   // Owner notification — ALWAYS sent, cannot be disabled (#89 requirement).
   const ownerDevices = await getDevicesForAccounts([ownerAddress]);
   if (ownerDevices.length > 0) {
-    const msg = buildOwnerMessage(topic0, topic1);
+    const locale = ownerDevices[0]?.locale ?? "en";
+    const titleKey = `${topic0}.${topic1}.title` as const;
+    const bodyKey = `${topic0}.${topic1}.body` as const;
     await sendPushToAll(ownerDevices, {
-      title: msg.title,
-      body: msg.body,
+      title: tNotification(titleKey, locale),
+      body: tNotification(bodyKey, locale),
       data: { eventId: event.id, contractId: event.contractId, topic0, topic1 },
     });
     console.log(
@@ -251,9 +254,10 @@ async function notifyGuardians(event: SorobanEvent, ownerAddress: string): Promi
   const devices = await getDevicesForAccounts(otherGuardians);
   if (devices.length === 0) return;
 
+  const locale = devices[0]?.locale ?? "en";
   await sendPushToAll(devices, {
-    title: "Recovery approval needed",
-    body: "A wallet recovery has been initiated and requires your approval.",
+    title: tNotification("guardian.approval_needed.title", locale),
+    body: tNotification("guardian.approval_needed.body", locale),
     data: { eventId: event.id, contractId: event.contractId, ownerAddress },
   });
   console.log(
@@ -264,37 +268,6 @@ async function notifyGuardians(event: SorobanEvent, ownerAddress: string): Promi
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
-
-function buildOwnerMessage(
-  topic0: string,
-  topic1: string
-): { title: string; body: string } {
-  if (topic0 === "recovery" && topic1 === "initiated") {
-    return {
-      title: "⚠️ Recovery initiated on your wallet",
-      body: "Someone has started a recovery process on your account. If this was not you, contact support immediately.",
-    };
-  }
-  if (topic0 === "recovery" && topic1 === "approved") {
-    return {
-      title: "Recovery approval received",
-      body: "A guardian has approved your wallet recovery.",
-    };
-  }
-  if (topic0 === "guardian" && topic1 === "added") {
-    return {
-      title: "New guardian added",
-      body: "A new guardian has been added to your wallet.",
-    };
-  }
-  if (topic0 === "guardian" && topic1 === "removed") {
-    return {
-      title: "Guardian removed",
-      body: "A guardian has been removed from your wallet.",
-    };
-  }
-  return { title: "Wallet security event", body: `${topic0}.${topic1}` };
-}
 
 function extractTopicString(val: SorobanEventValue | undefined): string | null {
   if (!val) return null;

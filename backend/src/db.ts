@@ -1,6 +1,7 @@
 import { Pool } from "pg";
 import { config } from "./config";
 import { ensureDevicesTable } from "./services/deviceRegistry";
+import { ensureVerifiedEmailsTable } from "./services/emailVerification";
 
 export const pool = new Pool({ connectionString: config.DATABASE_URL });
 
@@ -28,4 +29,7 @@ export async function ensureAuditTable() {
 
   // #87 — device token table for push notifications.
   await ensureDevicesTable(pool);
+
+  // #90 — verified email table for email notification fallback.
+  await ensureVerifiedEmailsTable(pool);
 }
