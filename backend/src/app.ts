@@ -13,6 +13,7 @@ import { flagsRouter } from "./routes/flags";
 import { devicesRouter } from "./routes/devices";
 import { emailRouter } from "./routes/email";
 import { createConfigRouter } from "./routes/config";
+import { createPaymentRequestsRouter } from "./routes/paymentRequests";
 import { localeMiddleware } from "./middleware/locale";
 import { errorHandler } from "./middleware/errorHandler";
 import { config } from "./config";
@@ -115,6 +116,8 @@ export function createApp(
   app.use("/api/v1/me/devices", devicesRouter);
   // #90 — email notification fallback (verified email management)
   app.use("/api/v1/me/email", emailRouter);
+  // #66 — SEP-7 payment request URI generation and parsing
+  app.use("/api/v1/payment-requests", createPaymentRequestsRouter());
   // #81 — Expose network, Horizon/RPC URLs, and pending upgrade timelock state
   const configRouter = createConfigRouter(globeWallet);
   app.use("/api/v1/config", configRouter);
