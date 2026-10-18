@@ -16,6 +16,7 @@ import { createConfigRouter } from "./routes/config";
 import { createPaymentRequestsRouter } from "./routes/paymentRequests";
 import { createContactsRouter } from "./routes/contacts";
 import { createPreferencesRouter } from "./routes/preferences";
+import { createDevRouter } from "./routes/dev";
 import { localeMiddleware } from "./middleware/locale";
 import { errorHandler } from "./middleware/errorHandler";
 import { config } from "./config";
@@ -128,6 +129,13 @@ export function createApp(
   const configRouter = createConfigRouter(globeWallet);
   app.use("/api/v1/config", configRouter);
   app.use("/config", configRouter);
+
+  // #69 — testnet-only Friendbot funding for one-click onboarding. The
+  // router is only mounted when the configured network is testnet, so on
+  // mainnet the path falls through to the 404 handler below.
+  if (config.STELLAR_NETWORK === "testnet") {
+    app.use("/api/v1/dev", createDevRouter());
+  }
 
   app.use((req, _res, next) => {
     next(
