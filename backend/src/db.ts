@@ -35,6 +35,9 @@ export async function ensureAuditTable() {
 
   // #67 — address book (saved contacts) per user.
   await ensureContactsTable(pool);
+
+  // #68 — per-user preferences (currency, language, hidden assets, notifications).
+  await ensurePreferencesTable(pool);
 }
 
 export async function ensureContactsTable(db: Pool) {
@@ -47,6 +50,16 @@ export async function ensureContactsTable(db: Pool) {
       memo VARCHAR(255),
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       UNIQUE (owner, address)
+    )
+  `);
+}
+
+export async function ensurePreferencesTable(db: Pool) {
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS preferences (
+      account VARCHAR(255) PRIMARY KEY,
+      data JSONB NOT NULL DEFAULT '{}'::jsonb,
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )
   `);
 }

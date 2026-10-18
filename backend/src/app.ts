@@ -15,6 +15,7 @@ import { emailRouter } from "./routes/email";
 import { createConfigRouter } from "./routes/config";
 import { createPaymentRequestsRouter } from "./routes/paymentRequests";
 import { createContactsRouter } from "./routes/contacts";
+import { createPreferencesRouter } from "./routes/preferences";
 import { localeMiddleware } from "./middleware/locale";
 import { errorHandler } from "./middleware/errorHandler";
 import { config } from "./config";
@@ -119,6 +120,8 @@ export function createApp(
   app.use("/api/v1/me/email", emailRouter);
   // #67 — address book (saved contacts) scoped to the signed-in account
   app.use("/api/v1/me/contacts", createContactsRouter());
+  // #68 — synced user preferences (currency, language, hidden assets, notifications)
+  app.use("/api/v1/me/preferences", createPreferencesRouter());
   // #66 — SEP-7 payment request URI generation and parsing
   app.use("/api/v1/payment-requests", createPaymentRequestsRouter());
   // #81 — Expose network, Horizon/RPC URLs, and pending upgrade timelock state
