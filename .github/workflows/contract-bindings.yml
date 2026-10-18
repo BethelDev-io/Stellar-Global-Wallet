@@ -5,11 +5,13 @@ on:
     branches: [main]
     paths:
       - 'contract/contracts/globe-wallet/**'
+      - 'contract/contracts/token-wrapper/**'
       - 'contract/scripts/bindings.sh'
       - '.github/workflows/contract-bindings.yml'
   pull_request:
     paths:
       - 'contract/contracts/globe-wallet/**'
+      - 'contract/contracts/token-wrapper/**'
       - 'contract/scripts/bindings.sh'
       - '.github/workflows/contract-bindings.yml'
 
@@ -33,9 +35,9 @@ jobs:
 
       - name: Fail if generated bindings are stale
         run: |
-          if [[ -n "$(git status --porcelain packages/bindings/globe-wallet)" ]]; then
+          if [[ -n "$(git status --porcelain packages/bindings/globe-wallet packages/bindings/token-wrapper)" ]]; then
             echo "error: generated bindings are out of date. Run contract/scripts/bindings.sh and commit the result." >&2
-            git --no-pager diff -- packages/bindings/globe-wallet
+            git --no-pager diff -- packages/bindings/globe-wallet packages/bindings/token-wrapper
             exit 1
           fi
 
