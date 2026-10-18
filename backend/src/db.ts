@@ -32,4 +32,21 @@ export async function ensureAuditTable() {
 
   // #90 — verified email table for email notification fallback.
   await ensureVerifiedEmailsTable(pool);
+
+  // #67 — address book (saved contacts) per user.
+  await ensureContactsTable(pool);
+}
+
+export async function ensureContactsTable(db: Pool) {
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS contacts (
+      id BIGSERIAL PRIMARY KEY,
+      owner VARCHAR(255) NOT NULL,
+      label VARCHAR(255) NOT NULL,
+      address VARCHAR(255) NOT NULL,
+      memo VARCHAR(255),
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      UNIQUE (owner, address)
+    )
+  `);
 }

@@ -14,6 +14,7 @@ import { devicesRouter } from "./routes/devices";
 import { emailRouter } from "./routes/email";
 import { createConfigRouter } from "./routes/config";
 import { createPaymentRequestsRouter } from "./routes/paymentRequests";
+import { createContactsRouter } from "./routes/contacts";
 import { localeMiddleware } from "./middleware/locale";
 import { errorHandler } from "./middleware/errorHandler";
 import { config } from "./config";
@@ -116,6 +117,8 @@ export function createApp(
   app.use("/api/v1/me/devices", devicesRouter);
   // #90 — email notification fallback (verified email management)
   app.use("/api/v1/me/email", emailRouter);
+  // #67 — address book (saved contacts) scoped to the signed-in account
+  app.use("/api/v1/me/contacts", createContactsRouter());
   // #66 — SEP-7 payment request URI generation and parsing
   app.use("/api/v1/payment-requests", createPaymentRequestsRouter());
   // #81 — Expose network, Horizon/RPC URLs, and pending upgrade timelock state
